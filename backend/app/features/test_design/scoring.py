@@ -30,12 +30,15 @@ def score_submission(
     candidate_flaws: Sequence[str],
     matches: Iterable[Mapping],
     report: str = "",
+    already_covered_indices: Sequence[int] = (),
 ) -> dict:
     """Score one problem submission.
 
     ``gt_flaws``: ground-truth flaws as mappings ``{id, text, severity, category}``.
     ``candidate_flaws``: the candidate's free-text flaw descriptions.
     ``matches``: judge verdicts ``{ground_truth_id, matched, candidate_index, quality}``.
+    ``already_covered_indices``: candidate indices that merely restate a provided
+    basic test — scored neutrally (excluded from precision and false positives).
 
     Returns per-flaw results, the false-positive submissions, raw confusion
     counts (for session-level micro-averaging), and the aggregate metrics.
@@ -80,10 +83,19 @@ def score_submission(
             }
         )
 
+    # Items that merely restate a provided basic test are neutral: drop them from
+    # the precision denominator and from the false-positive list. A matched index
+    # always wins over "already covered".
+    covered = {i for i in already_covered_indices if 0 <= i < len(candidate)} - used_candidate_idx
+
     total = len(gt)
-    num_claims = len(candidate)
+    num_claims = len(candidate) - len(covered)
     tp_candidate = len(used_candidate_idx)
-    false_positives = [t for i, t in enumerate(candidate) if i not in used_candidate_idx]
+    false_positives = [
+        t
+        for i, t in enumerate(candidate)
+        if i not in used_candidate_idx and i not in covered
+    ]
 
     recall = matched_count / total if total else 1.0
     precision = tp_candidate / num_claims if num_claims else 1.0
