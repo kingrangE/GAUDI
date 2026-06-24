@@ -20,6 +20,8 @@ out/
 dist/
 coverage/
 npm-debug.log*
+next-env.d.ts
+*.tsbuildinfo
 
 # OS / editor
 .DS_Store

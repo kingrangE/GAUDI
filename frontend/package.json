@@ -5,13 +5,29 @@
   "type": "module",
   "description": "and-you — AI Agent evaluation platform frontend (Next.js)",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
     "eslint": "^9.0.0",
+    "jsdom": "^25.0.0",
     "typescript": "^5.4.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^2.0.0"
