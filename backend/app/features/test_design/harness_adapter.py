@@ -26,7 +26,15 @@ class TestDesignAdapter:
         judged = await judge_submission(problem, flaws, model=self.model)
         gt_flaws = [asdict(f) for f in problem.flaws]
         matches = [m.model_dump() for m in judged.matches]
-        result = scoring.score_submission(gt_flaws, flaws, matches, report=judged.report)
+        # Mirror the live scoring path exactly: items that merely restate a
+        # provided basic test are scored neutrally, not as false positives.
+        result = scoring.score_submission(
+            gt_flaws,
+            flaws,
+            matches,
+            report=judged.report,
+            already_covered_indices=judged.already_covered_indices,
+        )
         return ScoreOutcome(
             gt_ids=[f.id for f in problem.flaws],
             matched_ids=[f["id"] for f in result["flaws"] if f["found"]],
