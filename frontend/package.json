@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "and-you — AI Agent evaluation platform frontend (Next.js)",
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
