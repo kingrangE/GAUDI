@@ -7,23 +7,24 @@ import { ProblemResultCard } from "./ProblemResultCard";
 const problem: ResultProblem = {
   problem_index: 0,
   problem_id: "problem_001",
-  title: "average",
-  candidate_flaws: ["빈 리스트"],
+  title: "프로필 이미지 업로드",
+  difficulty: "easy",
+  candidate_flaws: ["파일 크기 상한"],
   flaws: [
     {
       id: "f1",
-      text: "빈 리스트면 ZeroDivisionError",
+      text: "파일 크기 상한이 없다",
       severity: "high",
-      category: "edge_case",
+      category: "validation",
       found: true,
       quality: 2,
-      matched_candidate_text: "빈 리스트",
+      matched_candidate_text: "파일 크기 상한",
     },
     {
       id: "f2",
-      text: "타입 검증 없음",
-      severity: "medium",
-      category: "validation",
+      text: "Content-Type 검증 없음",
+      severity: "high",
+      category: "security",
       found: false,
       quality: 0,
       matched_candidate_text: null,
@@ -38,10 +39,11 @@ const problem: ResultProblem = {
 };
 
 describe("ProblemResultCard", () => {
-  it("shows found and missed flaws, false positives, and the report", () => {
+  it("shows found and missed items, false positives, difficulty, and the report", () => {
     render(<ProblemResultCard problem={problem} />);
-    expect(screen.getByText(/빈 리스트면 ZeroDivisionError/)).toBeTruthy();
-    expect(screen.getByText(/타입 검증 없음/)).toBeTruthy();
+    expect(screen.getByText("쉬움")).toBeTruthy();
+    expect(screen.getByText(/파일 크기 상한이 없다/)).toBeTruthy();
+    expect(screen.getByText(/Content-Type 검증 없음/)).toBeTruthy();
     expect(screen.getByText(/엉뚱한 지적/)).toBeTruthy();
     expect(screen.getByText("절반을 찾았습니다.")).toBeTruthy();
   });

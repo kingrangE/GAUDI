@@ -4,8 +4,9 @@ export interface ProblemPublic {
   index: number;
   id: string;
   title: string;
+  difficulty: string;
+  // Prose scenario (service + feature + tech + how it's built). No code to review.
   spec: string;
-  code: string;
 }
 
 export interface CreateSessionResponse {
@@ -33,6 +34,7 @@ export interface ResultProblem {
   problem_index: number;
   problem_id: string;
   title: string;
+  difficulty: string;
   candidate_flaws: string[];
   flaws: ResultFlaw[];
   false_positives: string[];
