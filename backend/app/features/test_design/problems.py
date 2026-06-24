@@ -50,6 +50,10 @@ class Problem:
     title: str
     difficulty: Difficulty
     spec: str
+    # Basic tests assumed to be ALREADY implemented — shown to the candidate as a
+    # starting point. Not graded; the candidate designs verification *beyond* these.
+    provided_tests: tuple[str, ...]
+    # The hidden answer set: the *additional* edge cases the candidate must design.
     flaws: tuple[Flaw, ...]
 
 
@@ -64,6 +68,10 @@ PROBLEMS: tuple[Problem, ...] = (
             "요청하면 백엔드는 S3 presigned PUT URL(유효시간 5분)을 발급한다. 클라이언트는 그 "
             "URL로 이미지를 S3에 직접 PUT 업로드하고, 완료되면 백엔드에 객체 key를 알려준다. "
             "백엔드는 그 key로 만든 이미지 URL을 사용자 프로필에 저장한다."
+        ),
+        provided_tests=(
+            "정상 형식·적정 크기 이미지를 발급받은 URL로 업로드하면 성공한다.",
+            "업로드 완료 콜백의 key로 만든 이미지 URL이 사용자 프로필에 저장된다.",
         ),
         flaws=(
             Flaw(
@@ -130,6 +138,10 @@ PROBLEMS: tuple[Problem, ...] = (
             "회원가입 REST API다. 클라이언트가 이메일/비밀번호를 POST하면, 서버는 users 테이블에서 "
             "같은 이메일이 있는지 SELECT로 조회하고 없으면 INSERT한다. 이메일 컬럼에는 DB unique "
             "인덱스가 걸려 있다."
+        ),
+        provided_tests=(
+            "신규 이메일로 가입하면 201로 성공하고 users에 레코드가 생긴다.",
+            "이미 가입된 이메일(같은 문자열)로 다시 요청하면 중복으로 거부된다.",
         ),
         flaws=(
             Flaw(
@@ -199,6 +211,10 @@ PROBLEMS: tuple[Problem, ...] = (
             "통보된다. webhook을 받으면 해당 주문 상태를 'refunded'로 바꾸고 사용자에게 알림을 "
             "보낸다."
         ),
+        provided_tests=(
+            "정상 환불 요청을 받으면 Stripe에 refund가 생성된다.",
+            "charge.refunded webhook을 받으면 해당 주문 상태가 refunded로 바뀐다.",
+        ),
         flaws=(
             Flaw(
                 id="f1",
@@ -265,6 +281,10 @@ PROBLEMS: tuple[Problem, ...] = (
             "클라이언트가 마지막으로 받은 항목의 (created_at, id)를 커서로 보내면 그 다음 size개를 "
             "반환한다."
         ),
+        provided_tests=(
+            "커서 없이 요청하면 최신순으로 첫 size개를 반환한다.",
+            "마지막 항목의 커서를 보내면 그 다음 size개를 이어서 반환한다.",
+        ),
         flaws=(
             Flaw(
                 id="f1",
@@ -322,6 +342,10 @@ PROBLEMS: tuple[Problem, ...] = (
             "소셜 서비스에서 사용자가 게시물을 올리면 팔로워 전원에게 푸시 알림을 보낸다. 게시 "
             "시점에 알림 작업을 메시지 큐에 넣고, 수평 확장된 워커들이 큐를 소비해 팔로워 목록을 "
             "조회한 뒤 각 디바이스 토큰으로 FCM/APNs 푸시를 발송한다."
+        ),
+        provided_tests=(
+            "게시물을 작성하면 알림 작업이 메시지 큐에 적재된다.",
+            "워커가 작업을 소비해 팔로워의 디바이스 토큰으로 푸시를 발송한다.",
         ),
         flaws=(
             Flaw(
@@ -395,6 +419,10 @@ PROBLEMS: tuple[Problem, ...] = (
             "차감한다. 동시 주문 충돌을 막기 위해 낙관적 락(version 컬럼)을 쓴다: 현재 stock과 "
             "version을 읽고, version이 그대로일 때만 stock을 줄이고 version을 +1 하는 UPDATE를 "
             "실행한다."
+        ),
+        provided_tests=(
+            "재고가 충분할 때 주문하면 stock이 수량만큼 줄고 version이 +1 된다.",
+            "정상 주문이 성공으로 처리된다.",
         ),
         flaws=(
             Flaw(

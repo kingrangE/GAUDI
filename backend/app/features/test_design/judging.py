@@ -18,11 +18,13 @@ from app.features.test_design.schemas import JudgeOutput, PairwiseVerdict
 from app.llm.structured import complete_structured
 
 _SYSTEM = """\
-당신은 '테스트 설계 평가'의 채점관입니다. 어떤 기능의 구현 시나리오와, 그 구현에서 **반드시
-검증해야 할 항목 목록**(엣지케이스·실패 모드 등, 각 항목의 id와 설명)이 주어집니다. 그리고
-응시자가 자연어로 작성한 **검증 항목 목록**(0부터 시작하는 인덱스)이 함께 주어집니다.
+당신은 '테스트 설계 평가'의 채점관입니다. 어떤 기능의 구현 시나리오와, 그 구현에 대해 **이미
+구현되어 제공된 기본 테스트 목록**, 그리고 그 위에 **추가로 반드시 검증해야 할 항목 목록**
+(엣지케이스·실패 모드 등, 각 항목의 id와 설명)이 주어집니다. 응시자는 제공된 기본 테스트 외에
+추가로 필요한 검증 항목을 자연어로 작성했고, 그 **검증 항목 목록**(0부터 시작하는 인덱스)이
+함께 주어집니다.
 
-각 정답 검증 항목마다 다음을 판정하세요:
+각 정답(추가) 검증 항목마다 다음을 판정하세요:
 - matched: 응시자의 서술 중 그 항목을 가리키는 것이 있으면 true, 없으면 false.
 - candidate_index: 매칭된 응시자 서술의 인덱스(매칭이 없으면 null).
 - quality: 매칭됐을 때 서술의 품질 0~2 (0=증상만 언급하거나 모호함, 1=핵심을 맞게 짚음,
@@ -31,7 +33,9 @@ _SYSTEM = """\
 규칙:
 - 표현이 달라도 의미가 같으면 매칭하세요(의미 기반 매칭).
 - 하나의 응시자 서술이 여러 정답 항목에 해당하면 가장 잘 맞는 항목에 매칭하세요.
-- 정답 항목과 무관하거나 틀린 응시자 서술의 인덱스는 false_positive_indices에 담으세요.
+- 응시자 서술이 **제공된 기본 테스트를 단순히 다시 적은 것**이면(이미 구현된 것) 매칭도 false
+  positive도 아닙니다. 그 인덱스는 already_covered_indices에 담으세요(중립).
+- 정답 항목과 무관하거나 틀린(허위) 응시자 서술의 인덱스는 false_positive_indices에 담으세요.
 - report: 응시자의 검증 설계 능력을 1~2줄 한국어로 요약하세요(무엇을 잘 짚고 무엇을 놓쳤는지).
 """
 
@@ -42,6 +46,7 @@ async def judge_submission(
     payload = {
         "title": problem.title,
         "spec": problem.spec,
+        "provided_tests": list(problem.provided_tests),
         "ground_truth": [{"id": f.id, "text": f.text} for f in problem.flaws],
         "candidate_flaws": list(candidate_flaws),
     }
@@ -65,6 +70,7 @@ async def judge_pairwise(
     payload = {
         "title": problem.title,
         "spec": problem.spec,
+        "provided_tests": list(problem.provided_tests),
         "ground_truth": [{"id": f.id, "text": f.text} for f in problem.flaws],
         "submission_A": list(flaws_a),
         "submission_B": list(flaws_b),

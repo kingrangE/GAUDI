@@ -40,3 +40,5 @@ async def test_judge_submission_builds_payload_and_returns_output(monkeypatch):
     # scenarios are prose-only — no code is sent to the judge
     assert payload["spec"]
     assert "code" not in payload
+    # provided basic tests are given to the judge as context
+    assert payload["provided_tests"] == list(problem.provided_tests)

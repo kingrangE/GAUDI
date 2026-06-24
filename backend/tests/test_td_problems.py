@@ -40,6 +40,8 @@ def test_each_problem_well_formed():
     for p in PROBLEMS:
         assert p.title and p.spec.strip()
         assert p.difficulty in _DIFFICULTIES
+        assert p.provided_tests, f"{p.id} has no provided basic tests"
+        assert all(t.strip() for t in p.provided_tests)
         assert p.flaws, f"{p.id} has no ground-truth verification items"
         flaw_ids = [f.id for f in p.flaws]
         assert len(set(flaw_ids)) == len(flaw_ids), f"{p.id} has duplicate item ids"

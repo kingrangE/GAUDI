@@ -16,10 +16,19 @@ async def test_create_session_returns_six_problems_without_ground_truth(client):
     assert len(data["problems"]) == 6
     for p in data["problems"]:
         assert p["spec"] and p["difficulty"]
+        # provided basic tests are shown as a starting point
+        assert p["provided_tests"]
         # the hidden answer set must never be serialized to the candidate
         assert "flaws" not in p
         # prose-only: no code field is exposed
-        assert set(p.keys()) == {"index", "id", "title", "difficulty", "spec"}
+        assert set(p.keys()) == {
+            "index",
+            "id",
+            "title",
+            "difficulty",
+            "spec",
+            "provided_tests",
+        }
 
 
 async def test_submit_scores_and_persists(client, mock_judge):
