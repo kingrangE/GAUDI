@@ -66,13 +66,13 @@ export default function TestDesignPage() {
     return (
       <div className="py-8">
         <p className="text-sm font-semibold text-brand-600">테스트 설계</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">테스트 설계 평가</h1>
-        <p className="mt-2 text-slate-600">
+        <h1 className="mt-1 text-2xl font-bold text-ink-900">테스트 설계 평가</h1>
+        <p className="mt-2 text-ink-soft">
           주어진 코드의 숨은 결함을 찾아내는 검증 역량을 평가합니다. 총 5개의 코드 문제가
           출제됩니다.
         </p>
         <Panel className="mt-6">
-          <label htmlFor="candidate" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="candidate" className="block text-sm font-medium text-ink-soft">
             응시자 이름
           </label>
           <input
@@ -82,7 +82,7 @@ export default function TestDesignPage() {
             placeholder="응시자 이름"
             aria-label="응시자 이름"
             onChange={(e) => setName(e.target.value)}
-            className="mt-2 w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            className="mt-2 w-full max-w-md rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           <div className="mt-4">
             <Button disabled={busy || name.trim().length === 0} onClick={start}>
@@ -103,7 +103,7 @@ export default function TestDesignPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">테스트 설계 평가</h1>
+        <h1 className="text-xl font-bold text-ink-900">테스트 설계 평가</h1>
         <Timer />
       </div>
       <ProgressBar current={index + 1} total={problems.length} />
@@ -120,7 +120,7 @@ export default function TestDesignPage() {
         {/* Right — flaw input */}
         <Panel className="flex min-h-0 flex-col">
           <SectionLabel>발견한 결함</SectionLabel>
-          <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          <p className="mt-2 text-xs leading-relaxed text-ink-soft">
             코드가 명세를 어기는 지점·경계 상황을 한 항목씩 서술하세요.
           </p>
           <div className="mt-3 min-h-0 flex-1 overflow-y-auto">

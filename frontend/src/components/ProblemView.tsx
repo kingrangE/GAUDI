@@ -4,8 +4,8 @@ import type { ProblemPublic } from "../lib/types";
 export function ProblemView({ problem }: { problem: ProblemPublic }) {
   return (
     <div>
-      <h2 className="text-lg font-bold text-slate-900">{problem.title}</h2>
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+      <h2 className="text-lg font-bold text-ink-900">{problem.title}</h2>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">
         {problem.spec}
       </p>
     </div>

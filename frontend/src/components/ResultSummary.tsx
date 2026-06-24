@@ -9,7 +9,7 @@ export function ResultSummary({ result }: { result: ResultResponse }) {
   return (
     <Panel className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">{result.candidate_name} 님의 결과</h2>
+        <h2 className="text-lg font-bold text-ink-900">{result.candidate_name} 님의 결과</h2>
         <Badge tone="good">{result.status}</Badge>
       </div>
       <div className="grid grid-cols-3 gap-3">

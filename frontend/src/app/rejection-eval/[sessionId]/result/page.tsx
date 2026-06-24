@@ -44,41 +44,41 @@ export default function ResultPage() {
   }, [sessionId]);
 
   if (error) return <p className="text-bad-600">{error}</p>;
-  if (!result) return <p className="text-slate-500">결과를 불러오는 중…</p>;
+  if (!result) return <p className="text-ink-soft">결과를 불러오는 중…</p>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">거부 능력 평가 결과</h1>
-        <p className="mt-1 text-slate-600">
-          응시자: <strong className="text-slate-900">{result.candidate_name}</strong>
+        <h1 className="text-2xl font-bold text-ink-900">거부 능력 평가 결과</h1>
+        <p className="mt-1 text-ink-soft">
+          응시자: <strong className="text-ink-900">{result.candidate_name}</strong>
         </p>
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700">전체 점수</h2>
+        <h2 className="text-sm font-semibold text-ink-soft">전체 점수</h2>
         <MetricRow precision={result.precision} recall={result.recall} f1={result.f1} />
       </section>
 
       {result.topics.map((topic) => (
         <Panel key={topic.topic_index} className="space-y-3">
-          <h3 className="font-semibold text-slate-900">
+          <h3 className="font-semibold text-ink-900">
             주제 {topic.topic_index + 1}. {topic.topic_title}
           </h3>
           <MetricRow precision={topic.precision} recall={topic.recall} f1={topic.f1} />
           {topic.report ? (
-            <p className="rounded-lg bg-slate-50 p-3 text-sm italic text-slate-600">
+            <p className="rounded-lg bg-paper p-3 text-sm italic text-ink-soft">
               📝 {topic.report}
             </p>
           ) : null}
           <ul className="space-y-3">
             {topic.items.map((item) => (
-              <li key={item.id} className="border-t border-slate-100 pt-3 first:border-0 first:pt-0">
+              <li key={item.id} className="border-t border-line pt-3 first:border-0 first:pt-0">
                 <div className="flex items-start gap-2">
                   <OutcomeBadge outcome={item.outcome} />
-                  <span className="text-sm text-slate-800">{item.text}</span>
+                  <span className="text-sm text-ink-900">{item.text}</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{item.explanation}</p>
+                <p className="mt-1 text-xs text-ink-soft">{item.explanation}</p>
               </li>
             ))}
           </ul>

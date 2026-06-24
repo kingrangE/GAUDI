@@ -41,12 +41,12 @@ export default function ResultPage() {
   }
 
   if (!result) {
-    return <p className="text-slate-500">결과를 불러오는 중…</p>;
+    return <p className="text-ink-soft">결과를 불러오는 중…</p>;
   }
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-slate-900">평가 결과</h1>
+      <h1 className="text-2xl font-bold text-ink-900">평가 결과</h1>
       <ResultSummary result={result} />
       {result.problems.map((problem) => (
         <ProblemResultCard key={problem.problem_index} problem={problem} />

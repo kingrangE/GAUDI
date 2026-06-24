@@ -32,7 +32,7 @@
 .metric p,
 .metric span {
   margin: 0;
-  color: var(--muted);
+  color: #5b6270;
   font-size: 13px;
 }
 
@@ -42,28 +42,28 @@
 }
 
 .teal {
-  background: var(--teal-soft);
-  color: var(--teal);
+  background: #e6e5f7;
+  color: #3a36c4;
 }
 
 .blue {
-  background: var(--blue-soft);
-  color: var(--blue);
+  background: #e6e5f7;
+  color: #3a36c4;
 }
 
 .amber {
-  background: var(--amber-soft);
-  color: var(--amber);
+  background: #f6ecd5;
+  color: #c08218;
 }
 
 .red {
-  background: var(--red-soft);
-  color: var(--red);
+  background: #f7e3e3;
+  color: #d23b3b;
 }
 
 .green {
-  background: var(--green-soft);
-  color: var(--green);
+  background: #e3f3ea;
+  color: #1f9d5a;
 }
 
 .contentGrid {
@@ -102,7 +102,8 @@
 
 .eyebrow {
   margin: 0;
-  color: var(--teal);
+  color: #3a36c4;
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 800;
 }
@@ -113,7 +114,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f9faf8;
+  background: #eceef3;
 }
 
 .segmented span {
@@ -122,7 +123,7 @@
   min-width: 80px;
   padding: 0 12px;
   border-right: 1px solid var(--line);
-  color: var(--muted);
+  color: #5b6270;
   font-size: 12px;
   font-weight: 700;
 }
@@ -138,33 +139,34 @@
   place-items: center;
   border-radius: 8px;
   padding: 0 9px;
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 800;
 }
 
 .pending {
-  background: var(--blue-soft);
-  color: var(--blue);
+  background: #f6ecd5;
+  color: #c08218;
 }
 
 .reviewing {
-  background: var(--teal-soft);
-  color: var(--teal);
+  background: #f6ecd5;
+  color: #c08218;
 }
 
 .flagged {
-  background: var(--amber-soft);
-  color: var(--amber);
+  background: #f7e3e3;
+  color: #d23b3b;
 }
 
 .done {
-  background: var(--green-soft);
-  color: var(--green);
+  background: #e3f3ea;
+  color: #1f9d5a;
 }
 
 .badge {
-  background: var(--red-soft);
-  color: var(--red);
+  background: #f7e3e3;
+  color: #d23b3b;
 }
 
 .sideStack {
@@ -200,7 +202,7 @@
 
 .trackCard p:not(.eyebrow) {
   margin-top: 8px;
-  color: var(--muted);
+  color: #5b6270;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -214,7 +216,7 @@
 .trackStats div {
   min-height: 64px;
   border-radius: 8px;
-  background: var(--surface-muted);
+  background: #eceef3;
   padding: 10px;
 }
 
@@ -224,7 +226,7 @@
 }
 
 .trackStats span {
-  color: var(--muted);
+  color: #5b6270;
   font-size: 12px;
   font-weight: 750;
 }
@@ -239,8 +241,8 @@
   min-height: 38px;
   place-items: center;
   border-radius: 8px;
-  background: #17352f;
-  color: #fff;
+  background: #3a36c4;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 800;
 }
@@ -264,7 +266,7 @@
 }
 
 .decisionGrid span {
-  color: var(--muted);
+  color: #5b6270;
   font-size: 12px;
   font-weight: 700;
 }
@@ -294,7 +296,7 @@
 .riskItem span,
 .resultLocation span {
   margin-top: 3px;
-  color: var(--muted);
+  color: #5b6270;
   font-size: 13px;
 }
 
@@ -314,7 +316,7 @@
 
 .activityList svg {
   margin-top: 2px;
-  color: var(--green);
+  color: #1f9d5a;
 }
 
 .activityList strong,
@@ -329,7 +331,7 @@
 
 .activityList span,
 .activityList time {
-  color: var(--muted);
+  color: #5b6270;
   font-size: 13px;
   line-height: 1.45;
 }

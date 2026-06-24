@@ -42,17 +42,17 @@ export function ProblemPane({
         </div>
       </div>
 
-      <h1 className="mt-3 text-lg font-bold text-slate-900">{problem.title}</h1>
+      <h1 className="mt-3 text-lg font-bold text-ink-900">{problem.title}</h1>
 
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
         {tab === "problem" ? (
-          <article className="space-y-2 text-sm leading-relaxed text-slate-700 [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_h2]:mt-4 [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-ink-900 [&_pre]:p-3 [&_pre]:text-ink-text">
+          <article className="space-y-2 text-sm leading-relaxed text-ink-soft [&_code]:rounded [&_code]:bg-paper [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_h2]:mt-4 [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-ink-900 [&_pre]:p-3 [&_pre]:text-ink-text">
             <ReactMarkdown>{problem.description_md}</ReactMarkdown>
           </article>
         ) : (
           <div className="space-y-3">
             {problem.sample_cases.length === 0 ? (
-              <p className="text-sm text-slate-400">예시가 없습니다.</p>
+              <p className="text-sm text-ink-faint">예시가 없습니다.</p>
             ) : (
               problem.sample_cases.map((c, i) => (
                 <div

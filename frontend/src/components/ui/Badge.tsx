@@ -10,11 +10,11 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const TONES: Record<Tone, string> = {
-  neutral: "border-slate-200 bg-slate-100 text-slate-600",
+  neutral: "border-line bg-paper text-ink-soft",
   good: "border-good-100 bg-good-50 text-good-700",
   bad: "border-bad-100 bg-bad-50 text-bad-700",
   brand: "border-brand-100 bg-brand-50 text-brand-700",
-  warn: "border-amber-200 bg-amber-50 text-amber-700",
+  warn: "border-warn-100 bg-warn-50 text-warn-700",
 };
 
 /** Pill badge for difficulty, pass/fail, outcomes, percentages and grades. */

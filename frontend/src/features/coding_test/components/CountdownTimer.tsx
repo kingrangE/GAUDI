@@ -28,7 +28,7 @@ export function CountdownTimer({ seconds }: { seconds: number }) {
   }, []);
 
   return (
-    <span className="font-mono text-sm text-slate-600" aria-label="남은 시간">
+    <span className="font-mono text-sm text-ink-soft" aria-label="남은 시간">
       {format(remaining)}
     </span>
   );

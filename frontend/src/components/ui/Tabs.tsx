@@ -29,7 +29,7 @@ export function Tabs({ tabs, active, onChange, className }: TabsProps) {
               "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
               selected
                 ? "bg-brand-50 text-brand-700"
-                : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+                : "text-ink-soft hover:bg-paper hover:text-ink-900",
             )}
           >
             {tab.label}

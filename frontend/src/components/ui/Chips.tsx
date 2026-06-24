@@ -19,7 +19,7 @@ export function Chips({ items, tone = "good", className }: ChipsProps) {
             "rounded-md px-2 py-0.5 text-xs font-medium",
             tone === "good"
               ? "bg-good-50 text-good-700"
-              : "bg-amber-50 text-amber-700",
+              : "bg-warn-50 text-warn-700",
           )}
         >
           {item}

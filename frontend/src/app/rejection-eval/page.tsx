@@ -33,14 +33,14 @@ export default function StartPage() {
   return (
     <div className="py-8">
       <p className="text-sm font-semibold text-brand-600">거부 능력</p>
-      <h1 className="mt-1 text-2xl font-bold text-slate-900">거부 능력 평가</h1>
-      <p className="mt-2 text-slate-600">
+      <h1 className="mt-1 text-2xl font-bold text-ink-900">거부 능력 평가</h1>
+      <p className="mt-2 text-ink-soft">
         고정 주제 3개에 대해 AI에게 설계를 지시하고, AI가 만든 설계 항목 중 잘못된 것을
         찾아내세요. 정밀도·재현율로 채점됩니다.
       </p>
 
       <Panel className="mt-6">
-        <label htmlFor="candidate" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="candidate" className="block text-sm font-medium text-ink-soft">
           응시자 이름
         </label>
         <input
@@ -48,7 +48,7 @@ export default function StartPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="이름을 입력하세요"
-          className="mt-2 w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          className="mt-2 w-full max-w-md rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         />
         <div className="mt-4">
           <Button onClick={start} disabled={loading || !name.trim()}>

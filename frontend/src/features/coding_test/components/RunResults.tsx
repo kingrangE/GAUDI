@@ -9,7 +9,7 @@ export function RunResults({
   data?: RunResponse;
   isPending: boolean;
 }) {
-  if (isPending) return <p className="text-sm text-slate-500">샘플 테스트 실행 중…</p>;
+  if (isPending) return <p className="text-sm text-ink-soft">샘플 테스트 실행 중…</p>;
   if (!data) return null;
 
   const passed = data.results.filter((r) => r.passed).length;
@@ -27,7 +27,7 @@ export function RunResults({
             <span className={r.passed ? "text-good-600" : "text-bad-600"}>
               {r.passed ? "●" : "○"}
             </span>
-            <span className={r.passed ? "text-slate-600" : "text-bad-700"}>
+            <span className={r.passed ? "text-ink-soft" : "text-bad-700"}>
               케이스 {r.index + 1}: {r.passed ? "통과" : `실패${r.error ? ` (${r.error})` : ""}`}
             </span>
           </li>

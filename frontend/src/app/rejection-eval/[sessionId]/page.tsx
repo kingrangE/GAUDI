@@ -86,7 +86,7 @@ export default function EvalPage() {
         <Badge tone="brand">
           주제 {topicIndex + 1} / {TOTAL}
         </Badge>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
           <div
             className="h-full rounded-full bg-brand-600 transition-all"
             style={{ width: `${((topicIndex + (phase === "review" ? 0.5 : 0)) / TOTAL) * 100}%` }}
@@ -98,11 +98,11 @@ export default function EvalPage() {
         {/* Left — topic context */}
         <Panel className="h-fit">
           <SectionLabel>주제</SectionLabel>
-          <h1 className="mt-2 text-lg font-bold text-slate-900">
+          <h1 className="mt-2 text-lg font-bold text-ink-900">
             {topic ? topic.title : `주제 ${topicIndex + 1}`}
           </h1>
-          {topic ? <p className="mt-2 text-sm leading-relaxed text-slate-600">{topic.description}</p> : null}
-          <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-500">
+          {topic ? <p className="mt-2 text-sm leading-relaxed text-ink-soft">{topic.description}</p> : null}
+          <p className="mt-4 rounded-lg bg-paper p-3 text-xs leading-relaxed text-ink-soft">
             {phase === "prompt"
               ? "AI에게 설계를 지시하는 프롬프트를 작성하세요. 구체적일수록 좋습니다."
               : "AI가 만든 설계 항목 중 잘못 적용된 기술이나 잘못된 방향성을 모두 거부(체크)하세요."}
@@ -118,7 +118,7 @@ export default function EvalPage() {
               onChange={(e) => setPrompt(e.target.value)}
               rows={10}
               placeholder="예) 결제 시스템을 설계해줘. 동시성, 데이터 정합성, 장애 복구를 고려해…"
-              className="mt-3 w-full flex-1 resize-none rounded-lg border border-slate-300 p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              className="mt-3 w-full flex-1 resize-none rounded-lg border border-line p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
             <div className="mt-3">
               <Button onClick={onGenerate} disabled={busy || !prompt.trim()}>
@@ -135,7 +135,7 @@ export default function EvalPage() {
               <ItemChecklist items={items} flagged={flagged} onToggle={toggle} />
             </CodePanel>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">{flagged.length}개 거부함</span>
+              <span className="text-sm text-ink-soft">{flagged.length}개 거부함</span>
               <Button onClick={onSubmit} disabled={busy}>
                 {busy
                   ? "처리 중…"

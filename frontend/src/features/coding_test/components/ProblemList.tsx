@@ -16,7 +16,7 @@ function difficultyTone(difficulty: string): "good" | "warn" | "bad" | "neutral"
 export function ProblemList() {
   const { data, isPending, isError } = useProblems();
 
-  if (isPending) return <p className="text-slate-500">불러오는 중…</p>;
+  if (isPending) return <p className="text-ink-soft">불러오는 중…</p>;
   if (isError || !data) return <p className="text-bad-600">문제를 불러오지 못했습니다.</p>;
 
   return (
@@ -25,9 +25,9 @@ export function ProblemList() {
         <li key={problem.id}>
           <Link
             href={`/coding-test/${problem.id}`}
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-panel transition-colors hover:border-brand-300"
+            className="flex items-center justify-between rounded-xl border border-line bg-surface p-4 shadow-panel transition-colors hover:border-brand-300"
           >
-            <span className="font-medium text-slate-900">{problem.title}</span>
+            <span className="font-medium text-ink-900">{problem.title}</span>
             <Badge tone={difficultyTone(problem.difficulty)}>{problem.difficulty}</Badge>
           </Link>
         </li>

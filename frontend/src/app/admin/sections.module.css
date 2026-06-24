@@ -49,7 +49,8 @@
 
 .eyebrow {
   margin: 0 0 4px;
-  color: var(--teal);
+  color: #3a36c4;
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 800;
 }
@@ -68,7 +69,7 @@
 
 .muted {
   margin: 0;
-  color: var(--muted);
+  color: #5b6270;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -93,7 +94,7 @@
 }
 
 .table th {
-  color: var(--muted);
+  color: #5b6270;
   font-size: 12px;
   font-weight: 800;
 }
@@ -113,51 +114,52 @@
   place-items: center;
   border-radius: 8px;
   padding: 0 9px;
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 800;
 }
 
 .ready,
 .pass {
-  background: var(--green-soft);
-  color: var(--green);
+  background: #e3f3ea;
+  color: #1f9d5a;
 }
 
 .running,
 .review {
-  background: var(--teal-soft);
-  color: var(--teal);
+  background: #f6ecd5;
+  color: #c08218;
 }
 
 .draft,
 .hold {
-  background: var(--amber-soft);
-  color: var(--amber);
+  background: #f6ecd5;
+  color: #c08218;
 }
 
 .closed {
-  background: var(--blue-soft);
-  color: var(--blue);
+  background: #e6e5f7;
+  color: #3a36c4;
 }
 
 .pending {
-  background: var(--blue-soft);
-  color: var(--blue);
+  background: #f6ecd5;
+  color: #c08218;
 }
 
 .reviewing {
-  background: var(--teal-soft);
-  color: var(--teal);
+  background: #f6ecd5;
+  color: #c08218;
 }
 
 .flagged {
-  background: var(--amber-soft);
-  color: var(--amber);
+  background: #f7e3e3;
+  color: #d23b3b;
 }
 
 .done {
-  background: var(--green-soft);
-  color: var(--green);
+  background: #e3f3ea;
+  color: #1f9d5a;
 }
 
 .metaGrid {
@@ -179,7 +181,7 @@
 }
 
 .metaGrid span {
-  color: var(--muted);
+  color: #5b6270;
   font-size: 12px;
   font-weight: 700;
 }
@@ -193,13 +195,13 @@
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--surface-muted);
+  background: #eceef3;
 }
 
 .progressFill {
   height: 100%;
   border-radius: inherit;
-  background: var(--teal);
+  background: #3a36c4;
 }
 
 .tagList,
@@ -214,9 +216,9 @@
 
 .tagList li {
   border-radius: 8px;
-  background: var(--surface-muted);
+  background: #eceef3;
   padding: 7px 9px;
-  color: #41504b;
+  color: #5b6270;
   font-size: 12px;
   font-weight: 750;
 }
@@ -231,13 +233,13 @@
   align-items: center;
   gap: 10px;
   min-height: 34px;
-  color: #34433e;
+  color: #5b6270;
   font-size: 13px;
   font-weight: 700;
 }
 
 .link {
-  color: var(--teal);
+  color: #3a36c4;
   font-weight: 800;
 }
 
@@ -262,13 +264,13 @@
 
 .actionButton {
   background: var(--surface);
-  color: #40504a;
+  color: #5b6270;
 }
 
 .actionActive {
-  border-color: #17352f;
-  background: #17352f;
-  color: #fff;
+  border-color: #3a36c4;
+  background: #3a36c4;
+  color: #ffffff;
 }
 
 .sortButton {
@@ -286,7 +288,7 @@
 }
 
 .sortButton:hover {
-  color: var(--teal);
+  color: #3a36c4;
 }
 
 .form {
@@ -300,7 +302,7 @@
 }
 
 .form label span {
-  color: var(--muted);
+  color: #5b6270;
   font-size: 12px;
   font-weight: 800;
 }
@@ -311,30 +313,30 @@
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: #ffffff;
   padding: 0 11px;
-  color: var(--text);
+  color: #14161c;
 }
 
 .form input:focus,
 .form select:focus {
-  border-color: var(--teal);
-  outline: 2px solid var(--teal-soft);
+  border-color: #3a36c4;
+  outline: 2px solid #e6e5f7;
 }
 
 .form button {
   min-height: 42px;
   border: 0;
   border-radius: 8px;
-  background: #17352f;
-  color: #fff;
+  background: #3a36c4;
+  color: #ffffff;
   cursor: pointer;
   font-weight: 800;
 }
 
 .formMessage {
   margin: 0;
-  color: var(--muted);
+  color: #5b6270;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -354,7 +356,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  color: #34433e;
+  color: #5b6270;
   cursor: pointer;
   padding: 0 10px;
   font-size: 12px;
@@ -362,8 +364,8 @@
 }
 
 .cardActions button:hover {
-  border-color: var(--strong-line);
-  background: var(--surface-muted);
+  border-color: #c3c8d4;
+  background: #eceef3;
 }
 
 @media (max-width: 1000px) {

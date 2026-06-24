@@ -12,7 +12,7 @@ export function ResultCards({
 }) {
   if (isPending) {
     return (
-      <p className="text-sm text-slate-500" role="status">
+      <p className="text-sm text-ink-soft" role="status">
         채점 중…
       </p>
     );
@@ -36,31 +36,31 @@ export function ResultCards({
         <Metric label="코드 품질" value={result.code_quality_score ?? "-"} />
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-lg border border-line bg-surface p-4">
         <SectionLabel>요약 리포트</SectionLabel>
         <div className="mt-3 space-y-2">
           <div>
-            <p className="mb-1 text-xs text-slate-500">강점</p>
+            <p className="mb-1 text-xs text-ink-soft">강점</p>
             {strengths.length > 0 ? (
               <Chips items={strengths} tone="good" />
             ) : (
-              <span className="text-xs text-slate-400">없음</span>
+              <span className="text-xs text-ink-faint">없음</span>
             )}
           </div>
           <div>
-            <p className="mb-1 text-xs text-slate-500">약점</p>
+            <p className="mb-1 text-xs text-ink-soft">약점</p>
             {weaknesses.length > 0 ? (
               <Chips items={weaknesses} tone="warn" />
             ) : (
-              <span className="text-xs text-slate-400">없음</span>
+              <span className="text-xs text-ink-faint">없음</span>
             )}
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-lg border border-line bg-surface p-4">
         <SectionLabel>분석 리포트</SectionLabel>
-        <p className="mt-2 text-sm leading-relaxed text-slate-700">{result.analysis_report}</p>
+        <p className="mt-2 text-sm leading-relaxed text-ink-soft">{result.analysis_report}</p>
       </div>
     </div>
   );

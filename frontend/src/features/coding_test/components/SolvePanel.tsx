@@ -34,7 +34,7 @@ export function SolvePanel({ problemId }: { problemId: string }) {
   const run = useRunMutation(problemId);
   const { submit, result, submissionId } = useSubmitAndPoll(problemId, candidateId);
 
-  if (problemQuery.isPending) return <p className="py-12 text-center text-slate-500">불러오는 중…</p>;
+  if (problemQuery.isPending) return <p className="py-12 text-center text-ink-soft">불러오는 중…</p>;
   if (problemQuery.isError || !problemQuery.data) {
     return <p className="py-12 text-center text-bad-600">문제를 불러오지 못했습니다.</p>;
   }
@@ -44,7 +44,7 @@ export function SolvePanel({ problemId }: { problemId: string }) {
 
   return (
     <div className="space-y-4">
-      <Link href="/coding-test" className="text-sm text-slate-500 hover:text-slate-800">
+      <Link href="/coding-test" className="text-sm text-ink-soft hover:text-ink-900">
         ← 문제 목록
       </Link>
 
