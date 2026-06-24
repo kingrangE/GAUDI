@@ -9,7 +9,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "jsx": "preserve",
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals", "node"],
+    "allowJs": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "plugins": [{ "name": "next" }]
   },
-  "include": ["src"]
+  "include": ["feature_spec_design", "src", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }
