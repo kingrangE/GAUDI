@@ -1,6 +1,6 @@
-"""Central LLM provider/model configuration for the backend.
+"""Central LLM seam for the backend (config + client).
 
-All features import the model config and client from here so model IDs are never
-scattered across the codebase (see root CLAUDE.md: "Centralize LLM provider/model
-config in one module").
+All LLM calls go through `LLMClient.complete`, the single patchable seam unit tests
+mock. Provider/model selection is centralized in `llm.config` — never hardcode model
+IDs or secrets at a call site.
 """

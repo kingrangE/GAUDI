@@ -5,12 +5,13 @@ Alembic comes later). Each shared feature lives under `app/features/<name>/` —
 importing its router (and, for test_design, its models) so a single `create_all()`
 discovers every table.
 
-This is the single unified entrypoint for all four features. The three shared
-features (coding-test, rejection-eval, test-design) plus minsu's dev-prompting
-(mounted from the top-level `feature_dev_prompting` package, untouched) are served
-by one app at `:8000` — `/api/*` and `/dev-prompting/*` don't collide. Run with
-`python -m uvicorn app.main:app --port 8000`. Set `DEMO_SOLVER=1` to stub the
-dev-prompting solver so the flow works without an OpenAI key (demo aid only).
+This is the single unified entrypoint for all six features. The three shared
+features (coding-test, rejection-eval, test-design) plus minsu's top-level feature
+packages (dev-prompting, spec-design, context-engineering — mounted from
+`feature_*/`, untouched) are served by one app at `:8000`; their prefixes
+(`/api/*`, `/dev-prompting/*`, `/spec-design/*`, `/api/context-engineering/*`) don't
+collide. Run with `python -m uvicorn app.main:app --port 8000`. Set `DEMO_SOLVER=1`
+to stub the dev-prompting solver so the flow works without an OpenAI key (demo aid only).
 """
 
 import os
@@ -26,8 +27,10 @@ from app.features.coding_test.router import router as coding_test_router
 from app.features.rejection_eval.router import router as rejection_eval_router
 from app.features.test_design import models as _test_design_models  # noqa: F401  (register tables)
 from app.features.test_design.routes import router as test_design_router
+from feature_context_engineering.router import router as context_engineering_router
 from feature_dev_prompting.api import get_solver_client
 from feature_dev_prompting.api import router as dev_prompting_router
+from feature_spec_design.api import router as spec_design_router
 
 
 @asynccontextmanager
@@ -50,6 +53,8 @@ app.include_router(rejection_eval_router)
 app.include_router(coding_test_router)
 app.include_router(test_design_router)
 app.include_router(dev_prompting_router)
+app.include_router(spec_design_router)
+app.include_router(context_engineering_router)
 
 
 @app.get("/health")
