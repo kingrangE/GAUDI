@@ -41,13 +41,17 @@ class CreateSessionRequest(BaseModel):
 
 
 class ProblemPublic(BaseModel):
-    """A problem as shown to the candidate — the flaw list is hidden."""
+    """A problem as shown to the candidate — the answer set is hidden.
+
+    ``spec`` is the prose scenario (service + feature + tech + how it's built);
+    there is no code to review. ``difficulty`` is one of easy/medium/hard.
+    """
 
     index: int
     id: str
     title: str
+    difficulty: str
     spec: str
-    code: str
 
 
 class CreateSessionResponse(BaseModel):
@@ -83,6 +87,7 @@ class ResultProblem(BaseModel):
     problem_index: int
     problem_id: str
     title: str
+    difficulty: str
     candidate_flaws: list[str]
     flaws: list[ResultFlaw]
     false_positives: list[str]

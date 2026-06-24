@@ -23,9 +23,9 @@ from app.llm.structured import complete_structured
 _FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
 _QUALITY_PROMPTS = {
-    "strong": "코드의 실제 결함을 정확하고 폭넓게(근본 원인과 조건까지) 3~4개 짚으세요.",
-    "mediocre": "결함을 1~2개만, 다소 모호하게(증상 위주로) 짚으세요.",
-    "hallucinated": "실제 결함과 무관하거나 사실이 틀린 지적을 1~2개 적으세요.",
+    "strong": "검증해야 할 항목을 근본 원인·조건까지 정확하고 폭넓게 3~4개 짚으세요.",
+    "mediocre": "검증 항목을 1~2개만, 다소 모호하게(증상 위주로) 짚으세요.",
+    "hallucinated": "실제 검증 항목과 무관하거나 사실이 틀린 지적을 1~2개 적으세요.",
 }
 
 
@@ -42,12 +42,10 @@ async def _generate() -> list[dict]:
             for quality, directive in _QUALITY_PROMPTS.items():
                 counter += 1
                 system = (
-                    "당신은 코드 리뷰 응시자입니다. 주어진 명세와 코드를 보고 발견한 결함을 "
-                    f"한국어 자연어 항목 리스트로 작성하세요. {directive}"
+                    "당신은 테스트 설계 평가 응시자입니다. 주어진 기능 시나리오를 보고 검증해야 할 "
+                    f"항목을 한국어 자연어 항목 리스트로 작성하세요. {directive}"
                 )
-                user = json.dumps(
-                    {"spec": problem.spec, "code": problem.code}, ensure_ascii=False
-                )
+                user = json.dumps({"spec": problem.spec}, ensure_ascii=False)
                 sub = await complete_structured(system, user, _Submission, model=author)
                 out.append(
                     {
