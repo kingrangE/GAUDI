@@ -34,6 +34,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "integration: exercises a real external service (LLM); skipped without credentials",
+    "harness: offline judge-reliability harness tests",
 ]
 
 [build-system]

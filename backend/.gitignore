@@ -1,0 +1,5 @@
+# Local SQLite database (created at runtime when DATABASE_URL is unset)
+*.db
+
+# Offline judge-reliability harness output
+reports/

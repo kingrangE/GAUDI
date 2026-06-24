@@ -1,0 +1,39 @@
+[
+  {
+    "key": "s1",
+    "problem_index": 0,
+    "author_model": "gpt-4o-mini",
+    "flaws": [
+      "빈 리스트를 넘기면 0으로 나누어 ZeroDivisionError가 난다.",
+      "원소가 숫자가 아니면 더하기에서 TypeError가 발생한다."
+    ]
+  },
+  {
+    "key": "s2",
+    "problem_index": 0,
+    "author_model": "gpt-4o",
+    "flaws": ["빈 리스트일 때의 동작이 정의되지 않았다."]
+  },
+  {
+    "key": "s3",
+    "problem_index": 0,
+    "author_model": "gpt-4o-mini",
+    "flaws": ["변수 이름이 너무 짧아 가독성이 나쁘다."]
+  },
+  {
+    "key": "s4",
+    "problem_index": 1,
+    "author_model": "gpt-4o",
+    "flaws": [
+      "대소문자를 구분하지 않아야 하는데 소문자화를 하지 않는다.",
+      "공백을 제거하지 않아 'race car'가 False가 된다.",
+      "None 입력 시 슬라이싱에서 예외가 난다."
+    ]
+  },
+  {
+    "key": "s5",
+    "problem_index": 1,
+    "author_model": "gpt-4o-mini",
+    "flaws": ["대소문자 처리가 빠져 있다."]
+  }
+]
