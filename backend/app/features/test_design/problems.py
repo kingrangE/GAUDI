@@ -487,6 +487,190 @@ PROBLEMS: tuple[Problem, ...] = (
             ),
         ),
     ),
+    # ----- 어려움 (hard) — cx-churn-radar -----------------------------------
+    Problem(
+        id="cx-churn-radar",
+        title="고객 이탈 스코어링 파이프라인 / Top-N API",
+        difficulty="hard",
+        spec=(
+            "구독형 커머스 고객사 CX AXOps팀의 '고객 이탈 스코어링 파이프라인 / Top-N API'다. "
+            "events 테이블(customer_token, event_type∈{view,cart,purchase,login,"
+            "support_ticket,refund,cancel}, ts [Unix seconds, UTC], session_id, metadata)과 "
+            "customers 테이블(customer_token, signup_ts, plan, region, last_active_ts)을 사용한다. "
+            "PII 평문 노출은 금지 정책이다.\n\n"
+            "파이프라인은 주기적으로(또는 온디맨드로) 실행된다. 각 고객에 대해 "
+            "'현재 시각 기준 최근 W일(기본 30)' 윈도우 내 이벤트를 집계해 이탈 스코어를 "
+            "계산한다: raw = max(0, Σweight(부정신호) − Σweight(긍정신호)), "
+            "score = min(1.0, raw / NORM_FACTOR). "
+            "부정 신호: support_ticket·refund·cancel(각 가중치 상이). "
+            "긍정 신호: purchase·view·cart. "
+            "계산된 스코어는 customers 테이블에 upsert된다.\n\n"
+            "Top-N API(GET /churn/top?n=&w=)는 이탈 스코어 내림차순 상위 N명을 반환한다. "
+            "프로덕션 데이터에는 결측 ts, 늦게 도착하는 이벤트(late-arriving), 중복 레코드, "
+            "향후 추가될 수 있는 신규 event_type이 존재한다고 알려져 있다."
+        ),
+        provided_tests=(
+            "최근 W일 이내 cancel·support_ticket이 다수인 고객이 이벤트가 없는 고객보다 "
+            "이탈 스코어가 높다.",
+            "Top-N=3 요청 시 스코어 내림차순 상위 3명만 반환된다.",
+            "W 윈도우 기준 이전(ts < now − W×86400)에 발생한 이벤트는 "
+            "스코어 계산에 포함되지 않는다.",
+        ),
+        flaws=(
+            Flaw(
+                id="ccr_f01",
+                text=(
+                    "윈도우 경계 off-by-one: ts >= now - W*86400 처리에서 정확히 W일 전에 발생한 "
+                    "이벤트의 포함·제외 기준이 불명확하면 경계 이벤트가 누락되거나 이중 집계되어 "
+                    "이탈 판정이 달라질 수 있다."
+                ),
+                severity="high",
+                category="boundary",
+            ),
+            Flaw(
+                id="ccr_f02",
+                text=(
+                    "결측 ts NULL 이벤트 처리 미정의: ts가 NULL인 이벤트를 그대로 비교식에 넣으면 "
+                    "예외가 발생하고, epoch(0)으로 대체하면 해당 이벤트가 항상 윈도우 밖으로 "
+                    "처리되어 스코어가 조용히 왜곡된다."
+                ),
+                severity="high",
+                category="error_handling",
+            ),
+            Flaw(
+                id="ccr_f03",
+                text=(
+                    "파이프라인 부분 실패 처리 미정의: 일부 고객 스코어 갱신 중 DB 오류 등으로 "
+                    "실패할 때, 성공한 고객은 최신 스코어·실패한 고객은 구 스코어가 남아 "
+                    "전체 Top-N 결과의 일관성이 깨진다."
+                ),
+                severity="medium",
+                category="error_handling",
+            ),
+            Flaw(
+                id="ccr_f04",
+                text=(
+                    "동시 스코어 갱신 경쟁 조건(lost update): 두 워커가 같은 customer_token의 "
+                    "score를 동시에 READ-MODIFY-WRITE할 때 낙관적 락·원자적 upsert 없이 구현하면 "
+                    "마지막 쓰기만 반영되어 한 워커의 계산 결과가 유실된다."
+                ),
+                severity="high",
+                category="concurrency",
+            ),
+            Flaw(
+                id="ccr_f05",
+                text=(
+                    "멱등성 부재 — 파이프라인 재실행 시 중복 집계: 처리 완료된 이벤트 범위를 "
+                    "기록하는 체크포인트가 없으면, 파이프라인을 재실행할 때 동일 윈도우의 이벤트를 "
+                    "다시 누적해 스코어가 부풀어 오른다."
+                ),
+                severity="medium",
+                category="concurrency",
+            ),
+            Flaw(
+                id="ccr_f06",
+                text=(
+                    "customer_token PII 평문 노출: Top-N API 응답에 customer_token을 직접 반환하면 "
+                    "PII 금지 정책을 위반하고, 응답 로그·캐시에 고객 식별자가 평문으로 남아 "
+                    "고객 추적이 가능해진다."
+                ),
+                severity="high",
+                category="security",
+            ),
+            Flaw(
+                id="ccr_f07",
+                text=(
+                    "접근 권한 제어(RBAC) 미비: /churn/top API에 역할 기반 권한 검증이 없으면 "
+                    "관리자 외 사용자나 다른 팀도 전체 고객의 이탈 스코어 상위 목록을 "
+                    "조회할 수 있어 고객 데이터가 의도치 않게 유출된다."
+                ),
+                severity="medium",
+                category="security",
+            ),
+            Flaw(
+                id="ccr_f08",
+                text=(
+                    "중복 이벤트 dedup 미적용: (customer_token, event_type, session_id, ts)가 "
+                    "동일한 중복 레코드를 dedup 없이 집계하면 "
+                    "부정 신호(refund·cancel·support_ticket)가 "
+                    "과산정되어 이탈 스코어가 실제보다 높게 왜곡된다."
+                ),
+                severity="high",
+                category="data_integrity",
+            ),
+            Flaw(
+                id="ccr_f09",
+                text=(
+                    "늦은 도착 이벤트(late-arriving) 재계산 미트리거: 스코어 산출 이후 "
+                    "late-arriving 이벤트가 삽입될 때 재계산을 트리거하지 않으면 해당 고객의 "
+                    "스코어가 오래된 값으로 유지되어 Top-N 순위가 부정확해진다."
+                ),
+                severity="medium",
+                category="data_integrity",
+            ),
+            Flaw(
+                id="ccr_f10",
+                text=(
+                    "스키마 드리프트 — 신규 event_type 처리 미정의: 새 event_type이 가중치 맵에 "
+                    "없을 때 KeyError가 발생하거나 묵시적으로 0으로 처리되어 "
+                    "스코어가 조용히 왜곡된다. 알 수 없는 타입에 대한 명시적 거부 또는 "
+                    "기본 가중치 정책을 정의해야 한다."
+                ),
+                severity="high",
+                category="validation",
+            ),
+            Flaw(
+                id="ccr_f11",
+                text=(
+                    "ts 단위·타임존 불일치: ts가 Unix milliseconds(ms)로 저장된 레코드와 "
+                    "seconds(s)로 저장된 레코드가 혼재하거나 UTC 보장이 없으면 "
+                    "윈도우 경계 계산이 틀려 W일 기준이 수십 년 차이로 벗어날 수 있다."
+                ),
+                severity="medium",
+                category="validation",
+            ),
+            Flaw(
+                id="ccr_f12",
+                text=(
+                    "인덱스 미비로 인한 풀스캔: events 테이블에 (customer_token, ts) 복합 인덱스가 "
+                    "없으면 W-일 윈도우 필터가 전체 이벤트 로그를 스캔해, 고객 수 × 이벤트 수에 "
+                    "비례한 O(N) 풀스캔이 발생해 파이프라인 실행 시간이 폭발적으로 증가한다."
+                ),
+                severity="high",
+                category="performance",
+            ),
+            Flaw(
+                id="ccr_f13",
+                text=(
+                    "비효율 Top-N 구현: 전체 고객 스코어를 ORDER BY score DESC 후 LIMIT N으로 "
+                    "구현하면 수백만 고객 환경에서 O(N log N) 정렬이 매 요청마다 발생한다. "
+                    "힙(heap) 또는 부분 정렬로 O(N log k)로 개선할 수 있다."
+                ),
+                severity="low",
+                category="performance",
+            ),
+            Flaw(
+                id="ccr_f14",
+                text=(
+                    "refund·cancel 오분류 — 동일 가중치 부여: refund(반품)은 부분적 불만 신호이고 "
+                    "cancel(구독 해지)은 강한 이탈 확정 신호인데 동일 가중치를 부여하면 "
+                    "이탈 스코어가 실제 이탈 의도를 반영하지 못해 탐지 정확도가 저하된다."
+                ),
+                severity="high",
+                category="correctness",
+            ),
+            Flaw(
+                id="ccr_f15",
+                text=(
+                    "이탈 정의의 긍정 신호 부재 조건 누락: 이탈 정의는 '부정 신호 누적 + 긍정 신호 "
+                    "부재'의 복합 조건인데, 스코어 공식이 차이값만 계산하면 최근 구매(긍정 신호)가 "
+                    "있어도 다수의 support_ticket으로 인해 이탈 High-risk로 오판된다."
+                ),
+                severity="medium",
+                category="correctness",
+            ),
+        ),
+    ),
 )
 
 PROBLEM_COUNT = len(PROBLEMS)

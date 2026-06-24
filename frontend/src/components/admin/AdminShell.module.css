@@ -2,7 +2,7 @@
   display: grid;
   min-height: 100vh;
   grid-template-columns: 248px minmax(0, 1fr);
-  background: #eceef3;
+  background: var(--paper);
 }
 
 .sidebar {
@@ -10,7 +10,7 @@
   top: 0;
   height: 100vh;
   border-right: 1px solid var(--line);
-  background: #ffffff;
+  background: var(--surface);
   padding: 24px 16px;
 }
 
@@ -27,10 +27,10 @@
   width: 40px;
   height: 40px;
   place-items: center;
-  border: 1px solid #dde1e9;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #3a36c4;
-  color: #ffffff;
+  background: var(--accent);
+  color: white;
   font-weight: 800;
 }
 
@@ -44,7 +44,7 @@
 }
 
 .brand span {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
 }
 
@@ -61,18 +61,18 @@
   min-height: 40px;
   border-radius: 8px;
   padding: 0 11px;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 14px;
   font-weight: 650;
 }
 
 .navItemActive {
-  background: #e6e5f7;
-  color: #3a36c4;
+  background: var(--brand-tint);
+  color: var(--accent);
 }
 
 .navItem:hover {
-  background: #eceef3;
+  background: var(--paper);
 }
 
 .workspace {
@@ -96,8 +96,8 @@
 
 .eyebrow {
   margin: 0;
-  color: #3a36c4;
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  color: var(--accent);
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 800;
 }
@@ -123,7 +123,7 @@
   border-radius: 8px;
   background: var(--surface);
   padding: 0 12px;
-  color: #5b6270;
+  color: var(--ink-soft);
 }
 
 .search input {
@@ -132,7 +132,7 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #14161c;
+  color: var(--ink);
 }
 
 .searchResults {
@@ -162,7 +162,7 @@
 }
 
 .searchResults a:hover {
-  background: #eceef3;
+  background: var(--paper);
 }
 
 .searchResults strong,
@@ -175,7 +175,7 @@
 }
 
 .searchResults span {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
 }
 
@@ -187,17 +187,17 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  color: #14161c;
+  color: var(--ink);
   cursor: pointer;
 }
 
 .iconButton:hover {
-  border-color: #c3c8d4;
+  border-color: var(--line-strong);
 }
 
 .notice {
   min-width: 92px;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 700;
 }

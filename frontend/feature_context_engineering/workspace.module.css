@@ -2,22 +2,10 @@
  * Context Engineering — same online-judge chrome as Prompt Judge.
  * Light cool-gray paper, a dark file well in the center, indigo accent, monospace kickers.
  * Left = project + file tree · center = read-only file well · right = CLAUDE.md console.
+ * Colors come from globals.css :root tokens — never inline a raw hex here.
  */
 
 .shell {
-  --paper: #eceef3;
-  --surface: #ffffff;
-  --ink: #14161c;
-  --ink-soft: #5b6270;
-  --ink-faint: #8b91a0;
-  --line: #dde1e9;
-  --accent: #3a36c4;
-  --ac: #1f9d5a;
-  --wa: #d23b3b;
-  --amber: #c08218;
-  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -97,7 +85,7 @@
   color: var(--ink-faint);
 }
 .kickerLight {
-  color: #9aa1b2;
+  color: var(--code-label);
 }
 
 /* ---- project pane (left) ---- */
@@ -125,7 +113,7 @@
   white-space: pre-wrap;
   font-size: 14px;
   line-height: 1.7;
-  color: #2a2f3a;
+  color: var(--ink-body);
 }
 
 .constraints {
@@ -189,7 +177,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 18px;
-  border-bottom: 1px solid #23262f;
+  border-bottom: 1px solid var(--code-head-border);
 }
 .wellHeadRight {
   display: flex;
@@ -200,14 +188,14 @@
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.08em;
-  color: #79c0ff;
+  color: var(--code-lang);
 }
 .pathTag {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.04em;
-  color: #c9ccd6;
-  background: #23262f;
+  color: var(--code-text-dim);
+  background: var(--code-head-border);
   padding: 2px 7px;
   border-radius: 2px;
 }
@@ -224,9 +212,9 @@
   flex: none;
   padding: 14px 0;
   text-align: right;
-  color: #474d5c;
+  color: var(--code-gutter);
   user-select: none;
-  border-right: 1px solid #20232c;
+  border-right: 1px solid var(--code-head-border);
 }
 .gutter > div {
   padding: 0 12px 0 18px;
@@ -234,7 +222,7 @@
 .wellBody {
   margin: 0;
   padding: 14px 0;
-  color: #e6e8ee;
+  color: var(--code-text);
 }
 .wellLine {
   padding: 0 20px;
@@ -243,23 +231,23 @@
 
 /* syntax tokens (dark theme) */
 .tok_kw {
-  color: #d6a2ff;
+  color: var(--syn-kw);
 }
 .tok_bi {
-  color: #79c0ff;
+  color: var(--code-lang);
 }
 .tok_str {
-  color: #9ece6a;
+  color: var(--syn-str);
 }
 .tok_num {
-  color: #f0a36b;
+  color: var(--syn-num);
 }
 .tok_com {
-  color: #6a7080;
+  color: var(--syn-com);
   font-style: italic;
 }
 .tok_txt {
-  color: #e6e8ee;
+  color: var(--code-text);
 }
 
 .wellEmpty {
@@ -268,7 +256,7 @@
   text-align: center;
   font-size: 13.5px;
   line-height: 1.7;
-  color: #8b91a0;
+  color: var(--ink-faint);
   padding: 40px 24px;
 }
 
@@ -292,7 +280,7 @@
   font-size: 13px;
   line-height: 1.6;
   color: var(--ink);
-  background: #fbfbfd;
+  background: var(--field);
 }
 .editor:focus {
   outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
@@ -305,13 +293,13 @@
   border: none;
   border-radius: 6px;
   background: var(--accent);
-  color: #fff;
+  color: white;
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
 }
 .submit:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 88%, #000);
+  background: color-mix(in srgb, var(--accent) 88%, black);
 }
 .submit:disabled {
   opacity: 0.45;
@@ -457,8 +445,8 @@
   place-items: center;
   height: 100vh;
   font-family: var(--mono);
-  color: #8b91a0;
-  background: #eceef3;
+  color: var(--ink-faint);
+  background: var(--paper);
 }
 
 @media (max-width: 900px) {

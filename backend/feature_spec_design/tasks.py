@@ -130,6 +130,160 @@ _TASKS: dict[str, SpecTask] = {
             ),
         ],
     ),
+    "cx-churn-radar-topn": SpecTask(
+        id="cx-churn-radar-topn",
+        title="이탈 위험 Top-N 고객 추출 API 설계 지시",
+        brief=(
+            "당신은 AXOps팀의 AI 어시스턴트입니다. "
+            "구독형 커머스 고객사의 CX 로그로 이탈 위험 고객을 탐지하는 서비스를 구축합니다.\n\n"
+            "데이터 환경:\n"
+            "- events: customer_token, "
+            "event_type(view|cart|purchase|login|support_ticket|refund|cancel), "
+            "ts, session_id, metadata\n"
+            "- customers: customer_token, signup_ts, plan, region, last_active_ts\n"
+            "- 데이터 품질 주의: 결측 ts, late-arriving 이벤트, "
+            "중복 레코드, 스키마 드리프트 존재.\n"
+            "- PII 규정: customer 식별자는 customer_token(토큰)으로만 처리, 평문 노출 금지.\n"
+            "- 이탈 정의: 최근 W일 내 부정 신호(refund, cancel, support_ticket) 누적 "
+            "+ 긍정 신호(purchase, login) 부재\n\n"
+            "구현 요구사항:\n"
+            "- 최근 W일 윈도우 집계로 고객별 이탈 스코어를 산출해야 합니다.\n"
+            "- 지연 도착(late-arriving) 이벤트를 정의된 정책에 따라 처리해야 합니다.\n"
+            "- 응답에서 고객 식별자는 customer_token으로만 노출, PII 평문 불포함.\n"
+            "- 반환할 이탈 위험 상위 N을 파라미터로 지정할 수 있어야 합니다.\n"
+            "- 결과 목록은 페이지네이션으로 제공되어야 합니다.\n"
+            "- 내부 서비스 전용 접근 제어로 외부 호출을 차단해야 합니다.\n"
+            "- 잘못된 입력(N 범위 초과, 날짜 오류 등)을 검증·거부해야 합니다.\n"
+            "- 결측 ts·중복 이벤트가 있어도 스코어 산출이 안전하게 완료되어야 합니다.\n\n"
+            "이 요구사항을 만족하도록 세부 설계는 직접 판단해 구체적으로 지시하세요."
+        ),
+        requirements=[
+            Requirement(
+                id="window_score",
+                text="최근 W일 윈도우 집계로 고객별 이탈 스코어를 산출한다"
+                "(부정신호 누적·긍정신호 부재 반영)",
+            ),
+            Requirement(
+                id="late_event_handling",
+                text="지연 도착(late-arriving) 이벤트를 정의된 정책에 따라 처리한다",
+            ),
+            Requirement(
+                id="pii_safe",
+                text="응답에서 고객 식별자는 customer_token으로만 노출되고"
+                " PII 평문은 포함되지 않는다",
+            ),
+            Requirement(
+                id="topn_param",
+                text="반환할 이탈 위험 상위 N을 파라미터로 지정할 수 있다",
+            ),
+            Requirement(
+                id="pagination",
+                text="결과 목록은 페이지네이션으로 제공된다",
+            ),
+            Requirement(
+                id="internal_access",
+                text="내부 서비스 전용 접근 제어로 외부 호출을 차단한다",
+            ),
+            Requirement(
+                id="input_validation",
+                text="잘못된 입력(N 범위 초과, 날짜 오류 등)을 검증·거부한다",
+            ),
+            Requirement(
+                id="dirty_data_defense",
+                text="결측 ts·중복 이벤트가 있어도 스코어 산출이 안전하게 완료된다",
+            ),
+        ],
+        dimensions=[
+            DecisionDimension(
+                key="window_aggregation",
+                label="윈도우 집계 방식",
+                description="이탈 스코어 산출에 사용하는 시간 윈도우 집계 전략.",
+                options=_opts(
+                    {
+                        "streaming": "good",
+                        "batch_precomputed": "good",
+                        "batch_adhoc": "ok",
+                        "no_window": "bad",
+                    }
+                ),
+            ),
+            DecisionDimension(
+                key="late_event_policy",
+                label="late-arriving 이벤트 처리 정책",
+                description="집계 윈도우 마감 후 도착한 지연 이벤트를 다루는 방식.",
+                options=_opts(
+                    {
+                        "watermark": "good",
+                        "buffer": "ok",
+                        "drop": "weak",
+                        "ignore": "bad",
+                    }
+                ),
+            ),
+            DecisionDimension(
+                key="pii_handling",
+                label="PII 처리 방식",
+                description="고객 식별자 및 개인정보를 API 응답에서 처리하는 방식.",
+                options=_opts(
+                    {
+                        "tokenized": "good",
+                        "partial_mask": "good",
+                        "plaintext": "bad",
+                        "none": "bad",
+                    }
+                ),
+            ),
+            DecisionDimension(
+                key="storage",
+                label="이탈 스코어 저장소",
+                description="집계된 이탈 스코어를 저장·조회하는 저장소 전략.",
+                options=_opts(
+                    {
+                        "postgres": "good",
+                        "redis_cache": "good",
+                        "in_memory": "weak",
+                        "none": "bad",
+                    }
+                ),
+            ),
+            DecisionDimension(
+                key="pagination",
+                label="페이지네이션 방식",
+                description="Top-N 결과 목록을 클라이언트에게 제공하는 페이지네이션 전략.",
+                options=_opts(
+                    {
+                        "cursor": "good",
+                        "offset": "ok",
+                        "none": "bad",
+                    }
+                ),
+            ),
+            DecisionDimension(
+                key="access_control",
+                label="접근 제어",
+                description="API 엔드포인트에 대한 접근 권한 제어 방식.",
+                options=_opts(
+                    {
+                        "internal_only": "good",
+                        "api_key": "ok",
+                        "public": "bad",
+                    }
+                ),
+            ),
+            DecisionDimension(
+                key="scoring_source",
+                label="스코어 계산 방식",
+                description="API 응답 시 이탈 스코어를 계산·조회하는 방식.",
+                options=_opts(
+                    {
+                        "precomputed": "good",
+                        "on_the_fly": "ok",
+                        "unscored": "bad",
+                    }
+                ),
+            ),
+        ],
+    ),
     "file-upload-api": SpecTask(
         id="file-upload-api",
         title="파일 업로드 API 구현",

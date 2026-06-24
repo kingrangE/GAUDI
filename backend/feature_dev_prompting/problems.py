@@ -14,6 +14,50 @@ from __future__ import annotations
 
 from feature_dev_prompting.models import GradingCase, Problem
 
+
+# ── churn-risk-stream: deterministic builders for the large stress cases ──────
+# Kept tiny and explicit so the expected values are provable by construction and
+# re-verified by the reference solution in tests.
+def _build_all_atrisk(customers: int, k: int) -> list[list[int]]:
+    """`customers` customers, each with k negatives at ts 0..k-1 (no positives).
+
+    Every customer enters at-risk at ts=k-1 and is never reset, so all of them are
+    simultaneously at-risk at instant k-1 -> answer == customers (window >= k-1)."""
+    return [[c, t, 0] for c in range(1, customers + 1) for t in range(k)]
+
+
+def _build_single_allneg(count: int) -> list[list[int]]:
+    """One customer with `count` negatives at ts 0..count-1 (no positives)."""
+    return [[1, t, 0] for t in range(count)]
+
+
+def _build_chain_with_resets(customers: int, bursts: int, k: int) -> list[list[int]]:
+    """Each customer repeats `bursts` identical (k negatives then 1 positive) bursts
+    on the same ts grid, so every customer shares the same at-risk episodes."""
+    ev: list[list[int]] = []
+    for c in range(1, customers + 1):
+        ts = 0
+        for _ in range(bursts):
+            for _ in range(k):
+                ev.append([c, ts, 0])
+                ts += 1
+            ev.append([c, ts, 1])
+            ts += 1
+    return ev
+
+
+_CR_FIVE = _build_all_atrisk(5, 3)            # answer 5
+_CR_DENSE300 = _build_all_atrisk(300, 3)      # answer 300
+_CR_DENSE1500 = _build_all_atrisk(1500, 3)    # answer 1500
+_CR_ALLNEG200K = _build_single_allneg(200000)  # answer 1
+_CR_MANY200K = _build_all_atrisk(66666, 3)    # answer 66666 (n=199998)
+_CR_CHAIN2000 = _build_chain_with_resets(2000, 2, 3)  # answer 2000 (n=16000)
+_CR_WORKED = [
+    [1, 0, 0], [1, 2, 0], [1, 3, 0],
+    [2, 4, 0], [2, 5, 0], [2, 6, 0], [2, 12, 1],
+    [3, 0, 0], [3, 1, 0], [3, 5, 1], [3, 6, 0], [3, 7, 0], [3, 8, 0],
+]  # answer 3
+
 _F1 = [[4, 1, 10], [3, 5, 24], [5, 6, 2], [3, 1, 41], [5, 1, 24], [4, 6, 50],
        [2, 4, 66], [2, 3, 22], [1, 6, 25]]
 _F2 = [[5, 7, 9], [4, 6, 4], [3, 6, 1], [3, 2, 3], [2, 1, 6]]
@@ -269,6 +313,164 @@ _PROBLEMS: dict[str, Problem] = {
             GradingCase(
                 args=[2, 2, 1, 1, [[0, 0], [1, 1], [0, 1], [1, 0]]], expected=[1, 0], hidden=True
             ),
+        ],
+    ),
+    # ── 이벤트 스트림 + 슬라이딩 윈도우(고객별) + 스위프라인 (플래티넘 상위급) ──────
+    "churn-risk-stream": Problem(
+        id="churn-risk-stream",
+        title="이탈 위험 고객 최대 동시 인원",
+        statement=(
+            "구독형 커머스 고객사의 CX 로그를 분석해 '이탈 위험' 고객을 추적하는 Customer "
+            "AXOps팀의 대시보드를 만듭니다. 로그는 n개의 이벤트로 이루어지며, 각 이벤트는 "
+            "[customer_id, ts, type] 형식입니다. ts는 발생 시각(정수), type은 0이면 부정 "
+            "이벤트(환불·문의 등 이탈 신호), 1이면 긍정 이벤트(구매·로그인 등 재참여 신호)입니다. "
+            "이벤트는 시간 순서대로 주어지지 않을 수 있습니다.\n\n"
+            "한 고객의 이벤트는 ts 오름차순으로 처리하며, ts가 같으면 부정(0)을 긍정(1)보다 먼저 "
+            "처리합니다.\n\n"
+            "[위험 진입] 한 고객이 길이 window 이하의 구간 안에 부정 이벤트를 k개 이상 쌓는 순간, "
+            "즉 부정 이벤트 k개의 ts 최댓값과 최솟값의 차이가 window 이하가 되는 순간 그 고객은 "
+            "'이탈 위험' 상태가 됩니다(구간 양 끝 포함). 위험에 진입하는 시각은 그 조건을 처음 "
+            "만족시킨 k번째 부정 이벤트의 ts입니다.\n\n"
+            "[위험 해제·초기화] 긍정 이벤트는 그 고객의 위험 상태를 해제하고, 그때까지 "
+            "누적된 부정 이벤트 기록을 모두 초기화합니다(위험 상태가 아니었더라도 기록은 "
+            "초기화됩니다). 즉 긍정 이벤트 이후에는 다시 새로 k개의 부정 이벤트가 window "
+            "안에 쌓여야 위험 상태가 됩니다. 해제되는 시각은 그 긍정 이벤트의 ts입니다.\n\n"
+            "따라서 한 번의 위험 구간은 반열린 구간 [진입 ts, 해제 ts)로 봅니다. 해제되는 "
+            "ts 시점에는 이미 위험 상태가 아닙니다. 진입 후 긍정 이벤트가 더 없으면 그 고객은 "
+            "그 시각 이후로 계속 위험 상태입니다. (한 고객의 k번째 부정 이벤트와 긍정 "
+            "이벤트의 ts가 같으면 진입과 해제가 같은 시각이 되어 그 순간에는 위험으로 세지 "
+            "않습니다.)\n\n"
+            "어느 한 시점에 동시에 '이탈 위험' 상태인 고객 수의 최댓값을 return 하도록 "
+            "solution 함수를 완성하세요.\n\n"
+            "[예시] window=5, k=3 이고 events가 아래와 같을 때:\n"
+            "  customer 1: 부정 ts=0,2,3 → 세 부정(0,2,3)의 ts 폭이 3(≤5)이라 ts=3에 위험 진입, "
+            "이후 긍정 없음 → [3, ∞)\n"
+            "  customer 2: 부정 ts=4,5,6 → ts=6에 위험 진입, 긍정 ts=12에 해제 → [6, 12)\n"
+            "  customer 3: 부정 ts=0,1 → 긍정 ts=5로 초기화 → 부정 ts=6,7,8 → ts=8에 위험 진입 → "
+            "[8, ∞)\n"
+            "ts=8 시점에 customer 1·2·3이 모두 위험 상태이므로 동시 위험 인원의 최댓값은 3입니다."
+        ),
+        constraints=(
+            "0 <= n <= 200000, n == len(events); 1 <= customer_id <= 10^9; 0 <= ts <= 10^9; "
+            "type ∈ {0, 1}; 0 <= window <= 10^9; 1 <= k <= 200000. 이벤트 순서는 보장되지 않음."
+        ),
+        entry_point="solution",
+        starter_code="def solution(n, events, window, k):\n    answer = 0\n    return answer\n",
+        time_limit_sec=6.0,
+        tests=[
+            # ── 공개 예제 (hidden=False) ──────────────────────────────────────
+            # 본문 예시: 세 고객, ts=8에 동시 3명
+            GradingCase(args=[13, _CR_WORKED, 5, 3], expected=3, hidden=False),
+            # 정확히 k개 → 1명
+            GradingCase(args=[3, [[7, 1, 0], [7, 2, 0], [7, 3, 0]], 10, 3],
+                        expected=1, hidden=False),
+            # 한 명만 위험, 다른 한 명은 window 초과
+            GradingCase(args=[4, [[1, 0, 0], [1, 3, 0], [2, 0, 0], [2, 5, 0]], 4, 2],
+                        expected=1, hidden=False),
+            # 동일 ts 3개 + window=0
+            GradingCase(args=[3, [[1, 5, 0], [1, 5, 0], [1, 5, 0]], 0, 3],
+                        expected=1, hidden=False),
+            # ── 숨김 케이스 (hidden=True) ─────────────────────────────────────
+            # 빈 입력
+            GradingCase(args=[0, [], 5, 3], expected=0, hidden=True),
+            # k=1 단일 부정
+            GradingCase(args=[1, [[1, 4, 0]], 5, 1], expected=1, hidden=True),
+            # 부정 1개 < k
+            GradingCase(args=[1, [[1, 4, 0]], 5, 2], expected=0, hidden=True),
+            # 긍정뿐
+            GradingCase(args=[1, [[1, 4, 1]], 5, 1], expected=0, hidden=True),
+            # 전부 긍정
+            GradingCase(args=[4, [[1, 0, 1], [1, 1, 1], [2, 2, 1], [3, 3, 1]], 100, 1],
+                        expected=0, hidden=True),
+            # 전부 부정, 정확히 k
+            GradingCase(args=[3, [[1, 0, 0], [1, 1, 0], [1, 2, 0]], 100, 3],
+                        expected=1, hidden=True),
+            # k-1개
+            GradingCase(args=[2, [[1, 0, 0], [1, 1, 0]], 100, 3], expected=0, hidden=True),
+            # 폭 == window (경계 포함 → 진입)
+            GradingCase(args=[3, [[1, 0, 0], [1, 4, 0], [1, 8, 0]], 8, 3],
+                        expected=1, hidden=True),
+            # 폭 == window+1 (미달)
+            GradingCase(args=[3, [[1, 0, 0], [1, 4, 0], [1, 9, 0]], 8, 3],
+                        expected=0, hidden=True),
+            # 같은 ts 긍정이 진입을 즉시 해제 ([2,2) 공집합)
+            GradingCase(args=[4, [[1, 0, 0], [1, 1, 0], [1, 2, 0], [1, 2, 1]], 5, 3],
+                        expected=0, hidden=True),
+            # 진입 직후(+1) 긍정 → [2,3)
+            GradingCase(args=[4, [[1, 0, 0], [1, 1, 0], [1, 2, 0], [1, 3, 1]], 5, 3],
+                        expected=1, hidden=True),
+            # 긍정 초기화 후 재진입
+            GradingCase(args=[6, [[1, 0, 0], [1, 1, 0], [1, 5, 1], [1, 6, 0], [1, 7, 0],
+                                  [1, 8, 0]], 5, 3], expected=1, hidden=True),
+            # 긍정 초기화로 진입 못 함
+            GradingCase(args=[4, [[1, 0, 0], [1, 1, 0], [1, 2, 1], [1, 3, 0]], 5, 3],
+                        expected=0, hidden=True),
+            # 5명 동시
+            GradingCase(args=[15, _CR_FIVE, 5, 3], expected=5, hidden=True),
+            # 시차 → 비중첩
+            GradingCase(args=[6, [[1, 0, 0], [1, 1, 0], [1, 2, 1], [2, 10, 0], [2, 11, 0],
+                                  [2, 12, 0]], 5, 3], expected=1, hidden=True),
+            # window=0, ts 모두 다름
+            GradingCase(args=[3, [[1, 0, 0], [1, 1, 0], [1, 2, 0]], 0, 3],
+                        expected=0, hidden=True),
+            # k == 세그먼트 길이
+            GradingCase(args=[4, [[1, 0, 0], [1, 1, 0], [1, 2, 0], [1, 3, 0]], 100, 4],
+                        expected=1, hidden=True),
+            # k=1, 긍정 사이의 단일 부정
+            GradingCase(args=[4, [[1, 0, 1], [1, 1, 1], [1, 2, 0], [1, 3, 1]], 5, 1],
+                        expected=1, hidden=True),
+            # 한 고객 여러 에피소드 → 한 고객은 동시 최대 1
+            GradingCase(args=[8, [[1, 0, 0], [1, 1, 0], [1, 2, 1], [1, 3, 0], [1, 4, 0],
+                                  [1, 5, 1], [1, 6, 0], [1, 7, 0]], 10, 2],
+                        expected=1, hidden=True),
+            # 열린 구간 + 닫힌 구간 중첩
+            GradingCase(args=[5, [[1, 0, 0], [1, 1, 0], [2, 1, 0], [2, 2, 0], [2, 9, 1]], 10, 2],
+                        expected=2, hidden=True),
+            # 입력 순서가 뒤섞임 → 고객별 정렬 필요
+            GradingCase(args=[6, [[2, 6, 0], [1, 3, 0], [2, 4, 0], [1, 1, 0], [2, 5, 0],
+                                  [1, 2, 0]], 5, 3], expected=2, hidden=True),
+            # 고객 간 동일 ts
+            GradingCase(args=[6, [[1, 5, 0], [2, 5, 0], [1, 5, 0], [2, 5, 0], [1, 5, 0],
+                                  [2, 5, 0]], 0, 3], expected=2, hidden=True),
+            # 해제 ts == 다른 고객 진입 ts 경계 (반열린 → 동시 아님)
+            GradingCase(args=[7, [[1, 0, 0], [1, 1, 0], [1, 2, 0], [1, 5, 1], [2, 3, 0],
+                                  [2, 4, 0], [2, 5, 0]], 5, 3], expected=1, hidden=True),
+            # 중간 피크
+            GradingCase(args=[10, [[1, 0, 0], [1, 1, 0], [1, 2, 0], [1, 4, 1], [2, 1, 0],
+                                   [2, 2, 0], [2, 3, 0], [3, 2, 0], [3, 3, 0], [3, 4, 0]], 5, 3],
+                        expected=2, hidden=True),
+            # 긍정 뒤 부정 버스트
+            GradingCase(args=[6, [[1, 0, 1], [1, 1, 1], [1, 2, 1], [1, 3, 0], [1, 4, 0],
+                                  [1, 5, 0]], 5, 3], expected=1, hidden=True),
+            # 매우 큰 window
+            GradingCase(args=[3, [[1, 0, 0], [1, 100, 0], [1, 1000, 0]], 100000, 3],
+                        expected=1, hidden=True),
+            # 모든 고객 부정 < k
+            GradingCase(args=[4, [[1, 0, 0], [1, 1, 0], [2, 2, 0], [2, 3, 0]], 100, 3],
+                        expected=0, hidden=True),
+            # 두 고객 동일 버스트 → 동시 2
+            GradingCase(args=[6, [[1, 0, 0], [1, 1, 0], [1, 10, 1], [2, 0, 0], [2, 1, 0],
+                                  [2, 10, 1]], 5, 2], expected=2, hidden=True),
+            # 초기화 후 열린 구간
+            GradingCase(args=[7, [[1, 0, 0], [1, 1, 0], [1, 2, 0], [1, 3, 1], [1, 4, 0],
+                                  [1, 5, 0], [1, 6, 0]], 5, 3], expected=1, hidden=True),
+            # k=1, 8명 동시
+            GradingCase(args=[8, [[c, 0, 0] for c in range(1, 9)], 0, 1],
+                        expected=8, hidden=True),
+            # 300명 동시
+            GradingCase(args=[900, _CR_DENSE300, 5, 3], expected=300, hidden=True),
+            # 1500명 동시
+            GradingCase(args=[4500, _CR_DENSE1500, 5, 3], expected=1500, hidden=True),
+            # 최대 n, 단일 고객 전부 부정
+            GradingCase(args=[200000, _CR_ALLNEG200K, 5, 3], expected=1, hidden=True),
+            # 대량 동시 (n≈200k, 66666명)
+            GradingCase(args=[199998, _CR_MANY200K, 5, 3], expected=66666, hidden=True),
+            # 초기화 대량 스트레스 (2000명이 동일 버스트 반복)
+            GradingCase(args=[16000, _CR_CHAIN2000, 4, 3], expected=2000, hidden=True),
+            # 혼합 시나리오
+            GradingCase(args=[12, [[10, 1, 0], [10, 2, 0], [10, 8, 0], [10, 9, 0], [11, 3, 0],
+                                   [11, 4, 0], [11, 5, 0], [11, 20, 1], [12, 4, 0], [12, 5, 0],
+                                   [12, 6, 0], [13, 100, 1]], 6, 3], expected=2, hidden=True),
         ],
     ),
 }

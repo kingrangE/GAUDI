@@ -26,6 +26,7 @@ from app.db.session import init_models
 from app.features.coding_test.router import router as coding_test_router
 from app.features.cs_eval.router import router as cs_eval_router
 from app.features.mock_exam import models as _mock_exam_models  # noqa: F401  (register tables)
+from app.features.mock_exam.exam_router import router as mock_exam_exam_router
 from app.features.mock_exam.router import router as mock_exam_admin_router
 from app.features.office_prompting.router import router as office_prompting_router
 from app.features.rejection_eval.router import router as rejection_eval_router
@@ -72,6 +73,7 @@ app.include_router(dev_prompting_router)
 app.include_router(spec_design_router)
 app.include_router(context_engineering_router)
 app.include_router(mock_exam_admin_router)
+app.include_router(mock_exam_exam_router)
 
 
 @app.get("/health")

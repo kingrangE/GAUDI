@@ -2,23 +2,10 @@
  * 명세 설계 — shares the "Prompt Judge" design language: light cool-gray chrome, white
  * panels, monospace kickers/verdicts, one dark well (the generated samples), and a
  * verdict-style ledger (per-decision agreement). Left | right split: instruct | results.
+ * Colors come from globals.css :root tokens — never inline a raw hex here.
  */
 
 .shell {
-  --paper: #eceef3;
-  --surface: #ffffff;
-  --ink: #14161c;
-  --ink-soft: #5b6270;
-  --ink-faint: #8b91a0;
-  --line: #dde1e9;
-  --accent: #3a36c4;
-  --ac: #1f9d5a;
-  --wa: #d23b3b;
-  --amber: #c08218;
-  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo",
-    "Noto Sans KR", sans-serif;
-
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -110,7 +97,7 @@
   color: var(--ink-faint);
 }
 .kickerLight {
-  color: #9aa1b2;
+  color: var(--code-label);
   margin-bottom: 8px;
 }
 .muted {
@@ -127,13 +114,13 @@
 
 .brief {
   white-space: pre-wrap;
-  background: #f6f7fa;
+  background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 5px;
   padding: 14px;
   font-size: 14px;
   line-height: 1.7;
-  color: #2a2f3a;
+  color: var(--ink-body);
 }
 
 /* ---- task picker ---- */
@@ -174,7 +161,7 @@
   width: 100%;
   min-height: 150px;
   resize: vertical;
-  background: #fbfbfd;
+  background: var(--field);
   color: var(--ink);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -197,7 +184,7 @@
 }
 .btn {
   background: var(--accent);
-  color: #fff;
+  color: white;
   border: none;
   border-radius: 6px;
   padding: 9px 18px;
@@ -206,7 +193,7 @@
   cursor: pointer;
 }
 .btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 88%, #000);
+  background: color-mix(in srgb, var(--accent) 88%, black);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -267,7 +254,7 @@
   padding: 2px 8px;
   border: 1px solid var(--line);
   border-radius: 2px;
-  background: #f6f7fa;
+  background: var(--surface-2);
   color: var(--ink-soft);
   margin: 2px 5px 2px 0;
 }
@@ -338,7 +325,7 @@
   height: 8px;
   width: 96px;
   border-radius: 999px;
-  background: #e6e8ee;
+  background: var(--line);
   overflow: hidden;
 }
 .barFill {
@@ -437,21 +424,21 @@
 /* ---- samples: the one dark well ---- */
 .samplesWell {
   background: var(--ink);
-  border-color: #23262f;
+  border-color: var(--code-head-border);
 }
 .sample {
-  border: 1px solid #23262f;
+  border: 1px solid var(--code-head-border);
   border-radius: 4px;
   padding: 8px 12px;
   margin-bottom: 8px;
-  background: #1a1d25;
+  background: var(--code-bg-2);
 }
 .sampleSummary {
   cursor: pointer;
   font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.06em;
-  color: #79c0ff;
+  color: var(--code-lang);
 }
 .sampleBody {
   margin-top: 10px;
@@ -466,28 +453,28 @@
   font-family: var(--sans);
   font-size: 13px;
   line-height: 1.65;
-  color: #c9ccd6;
+  color: var(--code-text-dim);
 }
 
 /* code well */
 .codewell {
-  border: 1px solid #23262f;
+  border: 1px solid var(--code-head-border);
   border-radius: 5px;
   overflow: hidden;
-  background: #0f1117;
+  background: var(--code-bg-3);
 }
 .codewellHead {
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  border-bottom: 1px solid #23262f;
-  background: #14161c;
+  border-bottom: 1px solid var(--code-head-border);
+  background: var(--code-bg);
 }
 .langtag {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.08em;
-  color: #79c0ff;
+  color: var(--code-lang);
 }
 .codewellScroll {
   display: flex;
@@ -500,16 +487,16 @@
   flex: none;
   padding: 12px 0;
   text-align: right;
-  color: #474d5c;
+  color: var(--code-gutter);
   user-select: none;
-  border-right: 1px solid #20232c;
+  border-right: 1px solid var(--code-head-border);
 }
 .gutter > div {
   padding: 0 10px 0 14px;
 }
 .codebody {
   padding: 12px 0;
-  color: #e6e8ee;
+  color: var(--code-text);
 }
 .codeline {
   padding: 0 16px;
@@ -518,23 +505,23 @@
 
 /* python token colors (dark theme) */
 .tok_kw {
-  color: #d6a2ff;
+  color: var(--syn-kw);
 }
 .tok_bi {
-  color: #79c0ff;
+  color: var(--code-lang);
 }
 .tok_str {
-  color: #9ece6a;
+  color: var(--syn-str);
 }
 .tok_num {
-  color: #f0a36b;
+  color: var(--syn-num);
 }
 .tok_com {
-  color: #6a7080;
+  color: var(--syn-com);
   font-style: italic;
 }
 .tok_txt {
-  color: #e6e8ee;
+  color: var(--code-text);
 }
 
 @keyframes pulse {

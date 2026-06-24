@@ -35,6 +35,7 @@ const config: Config = {
           muted: "#8b91a0",
           soft: "#5b6270",
           faint: "#8b91a0",
+          label: "#9aa1b2", // mono kicker on a dark surface (SectionLabel onDark)
         },
         // Verdict colors.
         good: { 50: "#e9f7ef", 100: "#cdebd9", 600: "#1f9d5a", 700: "#178048" },
@@ -43,6 +44,11 @@ const config: Config = {
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', '"SF Mono"', "ui-monospace", "Menlo", "Consolas", "monospace"],
+      },
+      fontSize: {
+        // Judge-console type scale: the mono kicker and the dark-well code line.
+        kicker: ["11px", { lineHeight: "1" }],
+        code: ["13px", { lineHeight: "1.6" }],
       },
       boxShadow: {
         panel: "0 1px 2px 0 rgb(20 22 28 / 0.04), 0 1px 3px 0 rgb(20 22 28 / 0.06)",

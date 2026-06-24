@@ -1,11 +1,16 @@
 import { notFound } from "next/navigation";
 
 import { AdminShell } from "@/components/admin/AdminShell";
+import { FeaturePanel } from "@/components/admin/FeaturePanel";
+import { Badge, Metric } from "@/components/ui";
 import {
+  EXAM_FLOW,
+  STEP_LABELS,
   fetchExamResult,
+  formatElapsed,
   formatScore,
-  formatTime,
   statusLabel,
+  type AttemptStatus,
 } from "@/lib/adminApi";
 
 import styles from "../../sections.module.css";
@@ -16,6 +21,17 @@ type AttemptResultPageProps = {
   params: Promise<{ attemptId: string }>;
 };
 
+function statusBadgeTone(status: AttemptStatus): "good" | "warn" | "bad" {
+  switch (status) {
+    case "completed":
+      return "good";
+    case "in_progress":
+      return "warn";
+    case "failed":
+      return "bad";
+  }
+}
+
 export default async function AttemptResultPage({ params }: AttemptResultPageProps) {
   const { attemptId } = await params;
   const detail = await fetchExamResult(attemptId);
@@ -24,75 +40,112 @@ export default async function AttemptResultPage({ params }: AttemptResultPagePro
     notFound();
   }
 
+  // Sort features in exam-flow order; unknown keys go to the end.
+  const flowIndex = (key: string) => {
+    const idx = (EXAM_FLOW as readonly string[]).indexOf(key);
+    return idx === -1 ? 99 : idx;
+  };
+  const orderedFeatures = [...detail.features].sort(
+    (a, b) => flowIndex(a.feature_key) - flowIndex(b.feature_key),
+  );
+
   return (
     <AdminShell
       active="results"
       eyebrow="모의고사 리포트"
       title={`${detail.candidate_label} 모의고사 리포트`}
     >
-      <div className={styles.twoColumn}>
-        <section className={styles.panel} aria-labelledby="score-title">
+      {/* Summary header */}
+      <section className={styles.panel} aria-labelledby="summary-title">
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.eyebrow}>{detail.candidate_code}</p>
+            <h2 id="summary-title" style={{ margin: 0 }}>
+              시험 요약
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tone={statusBadgeTone(detail.status)}>{statusLabel(detail.status)}</Badge>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Metric
+            label="종합 점수"
+            value={formatScore(detail.overall_normalized)}
+            hint="0–100 정규화"
+          />
+          <Metric
+            label="완료 시간"
+            value={
+              detail.completed_at
+                ? new Date(detail.completed_at).toLocaleTimeString("ko-KR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "—"
+            }
+          />
+          <Metric
+            label="소요 시간"
+            value={formatElapsed(detail.started_at, detail.completed_at)}
+          />
+          <Metric label="평가 기능" value={`${detail.features.length}개`} />
+        </div>
+      </section>
+
+      {/* Per-step overview bar */}
+      {orderedFeatures.length > 0 ? (
+        <section className={styles.panel} aria-labelledby="steps-overview-title">
           <div className={styles.panelHeader}>
             <div>
-              <p className={styles.eyebrow}>{detail.candidate_code}</p>
-              <h2 id="score-title">기능별 점수</h2>
-            </div>
-            <span className={styles.badge}>
-              종합 {formatScore(detail.overall_normalized)}
-            </span>
-          </div>
-
-          <div className={styles.metaGrid}>
-            <div>
-              <span>상태</span>
-              <strong>{statusLabel(detail.status)}</strong>
-            </div>
-            <div>
-              <span>완료 시간</span>
-              <strong>{formatTime(detail.completed_at)}</strong>
-            </div>
-            <div>
-              <span>평가 기능</span>
-              <strong>{detail.features.length}</strong>
+              <p className={styles.eyebrow}>5단계 점수</p>
+              <h2 id="steps-overview-title" style={{ margin: 0 }}>
+                단계별 정규화 점수
+              </h2>
             </div>
           </div>
-
-          <ul className={styles.scoreList}>
-            {detail.features.map((feature) => (
-              <li key={feature.feature_key}>
-                <span>{feature.label}</span>
-                <div className={styles.progressTrack}>
-                  <div
-                    className={styles.progressFill}
-                    style={{ width: `${Math.round(feature.normalized_score)}%` }}
-                  />
+          <div className="grid gap-3">
+            {EXAM_FLOW.map((key) => {
+              const feature = orderedFeatures.find((f) => f.feature_key === key);
+              const score = feature?.normalized_score ?? null;
+              const label = STEP_LABELS[key];
+              return (
+                <div key={key} className="grid grid-cols-[180px_minmax(0,1fr)_52px] items-center gap-3">
+                  <span className="text-sm font-medium text-ink-soft">{label}</span>
+                  <div className="h-2 overflow-hidden rounded-full bg-paper">
+                    <div
+                      className={
+                        score === null
+                          ? "h-full rounded-full bg-line"
+                          : score >= 70
+                            ? "h-full rounded-full bg-good-600"
+                            : score >= 40
+                              ? "h-full rounded-full bg-brand-600"
+                              : "h-full rounded-full bg-bad-600"
+                      }
+                      style={{ width: score !== null ? `${score}%` : "0%" }}
+                      role="presentation"
+                    />
+                  </div>
+                  <span className="text-right font-mono text-sm tabular-nums text-ink-soft">
+                    {score !== null ? `${Math.round(score)}` : "—"}
+                  </span>
                 </div>
-                <strong>{Math.round(feature.normalized_score)}</strong>
-              </li>
-            ))}
-            {detail.features.length === 0 ? (
-              <li>
-                <span className={styles.muted}>기록된 기능 결과가 없습니다.</span>
-              </li>
-            ) : null}
-          </ul>
+              );
+            })}
+          </div>
         </section>
+      ) : null}
 
-        <aside className={styles.grid}>
-          {detail.features.map((feature) => (
-            <section className={styles.card} key={feature.feature_key}>
-              <div>
-                <p className={styles.eyebrow}>
-                  {feature.label} · {Math.round(feature.normalized_score)}점
-                </p>
-                <h3>{feature.summary ? "요약" : "결과"}</h3>
-              </div>
-              <p className={styles.muted}>
-                {feature.summary ?? "세부 요약이 제공되지 않았습니다."}
-              </p>
-            </section>
-          ))}
-        </aside>
+      {/* Rich per-feature panels */}
+      <div className="grid gap-5" aria-label="단계별 상세 결과">
+        {orderedFeatures.map((feature) => (
+          <FeaturePanel key={feature.feature_key} feature={feature} />
+        ))}
+        {orderedFeatures.length === 0 ? (
+          <p className={styles.muted}>기록된 기능 결과가 없습니다.</p>
+        ) : null}
       </div>
     </AdminShell>
   );

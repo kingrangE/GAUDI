@@ -70,6 +70,59 @@ _RUBRICS: dict[str, list[Criterion]] = {
                   text="백엔드/API 레이어를 추가하지 않는다; "
                        "영속화가 필요하면 클라이언트 사이드로."),
     ],
+    "cx-churn-radar": [
+        # ── 명령 (3) ──────────────────────────────────────────────────────────
+        Criterion(id="cmd-install", category="commands",
+                  text="의존성 설치는 `uv sync` 또는 `pip install -e '.[dev]'`로 한다."),
+        Criterion(id="cmd-test", category="commands",
+                  text="`pytest -q`로 테스트를 실행한다 — 인메모리 폴백 사용, 실 DB 불필요."),
+        Criterion(id="cmd-lint", category="commands",
+                  text="린트는 `ruff check .`로 실행한다."),
+        # ── 구조 (4) ──────────────────────────────────────────────────────────
+        Criterion(id="struct-pipeline", category="structure", weight=1.5,
+                  text="이벤트 수집·전처리 코드는 `app/pipeline/`에 둔다 "
+                       "(`ingest.py`, `preprocess.py`)."),
+        Criterion(id="struct-scoring", category="structure",
+                  text="ML 모델 로딩과 스코어 계산은 `app/scoring/`에 둔다 "
+                       "(`model.py`, `scorer.py`)."),
+        Criterion(id="struct-dags", category="structure",
+                  text="Airflow DAG 파일은 `dags/`에 두며 DAG ID는 "
+                       "`{domain}_{task}_{schedule}` 형식을 따른다 "
+                       "(예: `churn_score_daily`, `event_ingest_hourly`)."),
+        Criterion(id="struct-pii-module", category="structure", weight=1.5,
+                  text="PII 마스킹 로직은 `app/pii.py`에만 둔다 — "
+                       "다른 모듈은 직접 마스킹 구현 없이 이 모듈을 호출한다."),
+        # ── 컨벤션 (5) ────────────────────────────────────────────────────────
+        Criterion(id="conv-pii-mask", category="conventions", weight=2.0,
+                  text="고객 이름·이메일·전화번호는 `app.pii.mask_customer()`를 호출해 "
+                       "`cust_xxxx` 토큰으로 변환 후 저장·응답한다; "
+                       "전화번호는 `mask_phone()`으로 부분 마스킹(010-****-1234)한다."),
+        Criterion(id="conv-inmem-test", category="conventions", weight=2.0,
+                  text="테스트는 `tests/conftest.py`의 인메모리 픽스처를 사용한다; "
+                       "`DATABASE_URL=sqlite:///:memory:`로 오버라이드해 "
+                       "실 PostgreSQL 없이 실행한다."),
+        Criterion(id="conv-dag-naming", category="conventions",
+                  text="DAG ID는 `{domain}_{task}_{schedule}` 규칙을 따른다 "
+                       "(예: `churn_score_daily`, `event_ingest_hourly`)."),
+        Criterion(id="conv-model-version", category="conventions", weight=1.5,
+                  text="ML 모델 아티팩트 파일명에 버전을 포함한다 (`model_v{n}.pkl`); "
+                       "실행 경로는 `MODEL_PATH` 환경변수로 지정한다."),
+        Criterion(id="conv-event-schema", category="conventions",
+                  text="events 테이블 컬럼: `customer_token, event_type, ts, "
+                       "session_id, metadata`; `event_type`은 "
+                       "`view·cart·purchase·login·support_ticket·refund·cancel` 7가지."),
+        # ── 경계 (3) ──────────────────────────────────────────────────────────
+        Criterion(id="bound-no-leakage", category="boundaries", weight=2.0,
+                  text="`build_features(events, score_date)`에서 `score_date` 이후 "
+                       "이벤트는 절대 포함하지 않는다 — 미래 데이터 누수 금지."),
+        Criterion(id="bound-no-plain-pii", category="boundaries", weight=2.0,
+                  text="DB·로그·API 응답에 고객 평문 PII(이름·이메일·전화번호)를 기록하지 않는다; "
+                       "반드시 `app.pii.mask_customer()`를 먼저 호출한다."),
+        Criterion(id="bound-no-real-db-tests", category="boundaries", weight=1.5,
+                  text="테스트에서 실제 PostgreSQL을 기동하지 않는다; "
+                       "`tests/conftest.py`의 인메모리 폴백(`DATABASE_URL=sqlite:///:memory:`) "
+                       "만 사용한다."),
+    ],
 }
 
 

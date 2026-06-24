@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Panel } from "@/components/ui";
+import { Panel, buttonClasses } from "@/components/ui";
 
 import { useSessionResult } from "../queries";
 import { ResultView } from "./ResultView";
@@ -28,10 +28,7 @@ export function CsEvalResult({ sessionId }: { sessionId: string }) {
     return (
       <Panel>
         <p className="text-bad-600">채점에 실패했습니다: {data.error}</p>
-        <Link
-          href="/cs-eval"
-          className="mt-3 inline-flex font-mono text-xs font-semibold uppercase tracking-[0.1em] text-brand-600 hover:text-brand-700"
-        >
+        <Link href="/cs-eval" className={buttonClasses("secondary", "mt-3")}>
           ← 다시 풀기
         </Link>
       </Panel>

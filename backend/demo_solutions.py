@@ -144,6 +144,51 @@ def solution(m, n, h, w, drops):
     return best
 """
 
+CHURN_RISK_STREAM = """\
+from collections import defaultdict
+
+
+def solution(n, events, window, k):
+    by_cust = defaultdict(list)
+    for cid, ts, typ in events:
+        by_cust[cid].append((ts, typ))
+
+    deltas = defaultdict(int)  # coord -> net change to the running at-risk count
+    for evs in by_cust.values():
+        evs.sort()  # (ts, type): ts asc, negative(0) before positive(1) on ties
+        neg = []            # negative timestamps in the current segment (since last reset)
+        left = 0            # two-pointer left bound into neg
+        at_risk = False
+        enter = None
+        for ts, typ in evs:
+            if typ == 1:  # positive -> end at-risk + reset negative history
+                if at_risk:
+                    deltas[enter] += 1
+                    deltas[ts] -= 1
+                    at_risk = False
+                    enter = None
+                neg = []
+                left = 0
+            else:  # negative
+                neg.append(ts)
+                if not at_risk:
+                    while neg[left] < ts - window:
+                        left += 1
+                    if len(neg) - left >= k:
+                        at_risk = True
+                        enter = ts
+        if at_risk:  # never reset -> open-ended [enter, +inf)
+            deltas[enter] += 1
+
+    ans = 0
+    running = 0
+    for coord in sorted(deltas):
+        running += deltas[coord]
+        if running > ans:
+            ans = running
+    return ans
+"""
+
 # problem id -> reference solution code
 REFERENCE: dict[str, str] = {
     "taxi-fare": TAXI_FARE,
@@ -152,6 +197,7 @@ REFERENCE: dict[str, str] = {
     "stepping-stones": STEPPING_STONES,
     "ranking-search": RANKING_SEARCH,
     "cactus-hide": CACTUS_HIDE,
+    "churn-risk-stream": CHURN_RISK_STREAM,
 }
 
 # unique phrase in each statement, used by the demo stub to pick the matching solution
@@ -162,4 +208,5 @@ DETECT: dict[str, str] = {
     "stepping-stones": "징검다리",
     "ranking-search": "지원자",
     "cactus-hide": "선인장",
+    "churn-risk-stream": "이탈 위험",
 }
