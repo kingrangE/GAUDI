@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.coding_test.judge import judge_submission
 from app.features.coding_test.models import Problem, Submission, TestCase
 from app.features.coding_test.runner import (
     DEFAULT_MEM_LIMIT_MB,
@@ -106,6 +107,27 @@ async def grade_submission(
         )
         submission.test_passed = sum(1 for o in outcomes if o.passed)
         submission.test_total = len(outcomes)
+
+        # LLM judge: code-quality report grounded on the deterministic score.
+        case_breakdown = [
+            {"index": i, "passed": o.passed, "error": o.error}
+            for i, o in enumerate(outcomes)
+        ]
+        judgement = await judge_submission(
+            title=problem.title,
+            description_md=problem.description_md,
+            rubric=problem.rubric,
+            reference_solution=problem.reference_solution,
+            function_name=problem.function_name,
+            code=submission.code,
+            test_passed=submission.test_passed,
+            test_total=submission.test_total,
+            case_breakdown=case_breakdown,
+        )
+        submission.strengths = judgement.strengths
+        submission.weaknesses = judgement.weaknesses
+        submission.analysis_report = judgement.analysis_report
+        submission.code_quality_score = judgement.code_quality_score
         submission.status = "graded"
     except Exception as exc:  # noqa: BLE001 — surface failure to the candidate
         submission.status = "failed"

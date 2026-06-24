@@ -21,3 +21,28 @@ pytest tests/test_x.py::test_name   # single test
 - Centralize LLM provider/model config in one module; never scatter model IDs.
 - Secrets via `.env` only (see `.env.example`); never commit keys.
 - Tests in `tests/` as `test_*.py`; **mock the LLM** in unit tests. See the `test-writing` skill.
+
+## Coding-test grading (async, RQ)
+
+Submitting code grades asynchronously: the API returns immediately with
+`status=grading` and the client polls `GET /api/coding-test/submissions/{id}`.
+
+- `grading_mode` (env / `app/core/config.py`): `inline` (default — grades
+  in-process; used by tests and no-broker setups) or `rq` (enqueues to a worker).
+- Run the async path locally:
+  ```bash
+  docker compose up -d redis        # from repo root
+  cd backend
+  GRADING_MODE=rq uvicorn app.main:app --reload
+  GRADING_MODE=rq python worker.py  # separate terminal: the RQ grading worker
+  ```
+- Seed problems once: `python -m app.scripts.seed_problems`.
+
+## Sandbox security (coding-test runner)
+
+`SubprocessCodeRunner` executes untrusted candidate Python in an isolated
+`python -I` child with a wall-clock timeout, `resource` limits (address space /
+CPU / file descriptors), network disabled, and a temp cwd. This is
+**defense-in-depth, not airtight isolation** — suitable for a proctored /
+trusted-candidate demo, **never** exposed to the open internet as-is. The
+`CodeRunner` interface is the seam to drop in a hardened Docker/Piston runner.

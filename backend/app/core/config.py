@@ -5,6 +5,7 @@ model IDs across files). Values come from the environment / `.env`.
 """
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -23,6 +24,11 @@ class Settings(BaseSettings):
 
     # Comma-separated list of allowed CORS origins for the frontend.
     cors_origins: str = "http://localhost:3000"
+
+    # Background grading. "inline" runs grading in-process (default; used by
+    # tests and a no-broker setup); "rq" enqueues to an RQ worker via Redis.
+    redis_url: str = "redis://localhost:6379/0"
+    grading_mode: Literal["inline", "rq"] = "inline"
 
     @property
     def cors_origin_list(self) -> list[str]:

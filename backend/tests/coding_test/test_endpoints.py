@@ -59,9 +59,11 @@ async def test_submit_reference_scores_full(coding_client):
     body = result.json()
     assert body["status"] == "graded"
     assert body["test_passed"] == body["test_total"] == 5
-    # judge fields are not populated until PR-B
-    assert body["code_quality_score"] is None
-    assert body["analysis_report"] is None
+    # LLM-judge fields (mocked) are populated alongside the deterministic score
+    assert body["code_quality_score"] == 80
+    assert body["analysis_report"]
+    assert body["strengths"] == ["해시맵 활용"]
+    assert body["weaknesses"] == ["변수명 모호"]
 
 
 async def test_submit_buggy_is_partial(coding_client):

@@ -13,11 +13,22 @@ from sqlalchemy.pool import StaticPool
 import app.features.coding_test.models  # noqa: F401  (register tables on Base)
 from app.db.base import Base
 from app.db.session import get_session
-from app.features.coding_test import service
+from app.features.coding_test import grading, service
+from app.features.coding_test.judge import JudgeOutput
 from app.features.coding_test.problems import PROBLEMS
 from app.features.coding_test.runner import ExecResult
 from app.main import app
 from app.scripts.seed_problems import _upsert
+
+
+async def _fake_judge(**_kwargs) -> JudgeOutput:
+    """Deterministic stand-in for the LLM judge so endpoint tests stay offline."""
+    return JudgeOutput(
+        strengths=["해시맵 활용"],
+        weaknesses=["변수명 모호"],
+        analysis_report="핵심 자료구조를 적절히 선택했고 경계조건 처리도 무난하다.",
+        code_quality_score=80,
+    )
 
 
 class InProcessRunner:
@@ -64,12 +75,15 @@ async def coding_client():
 
     app.dependency_overrides[get_session] = override_get_session
     original_runner = service.runner
+    original_judge = grading.judge_submission
     service.runner = InProcessRunner()
+    grading.judge_submission = _fake_judge  # offline judge for endpoint tests
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     service.runner = original_runner
+    grading.judge_submission = original_judge
     app.dependency_overrides.clear()
     await engine.dispose()
