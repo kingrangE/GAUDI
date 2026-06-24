@@ -8,9 +8,9 @@ import styles from "../../sections.module.css";
 export const dynamic = "force-dynamic";
 
 type CandidateResultPageProps = {
-  params: {
+  params: Promise<{
     candidateId: string;
-  };
+  }>;
 };
 
 const trackLabels = {
@@ -21,8 +21,9 @@ const trackLabels = {
   officePrompting: "사무직 Prompting",
 };
 
-export default function CandidateResultPage({ params }: CandidateResultPageProps) {
-  const result = getCandidateResult(params.candidateId);
+export default async function CandidateResultPage({ params }: CandidateResultPageProps) {
+  const { candidateId } = await params;
+  const result = getCandidateResult(candidateId);
 
   if (!result) {
     notFound();

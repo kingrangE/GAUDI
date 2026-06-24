@@ -1,9 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Shared design system — minsu's "judge console" language is the standard.
+ * Light cool-gray chrome (paper/surface) + a dark "ink" code well + indigo accent,
+ * with a monospace identity for kickers, verdicts and line numbers.
+ * Tokens lifted verbatim from feature_dev_prompting/workspace.module.css.
+ */
+:root {
+  --paper: #eceef3;
+  --surface: #ffffff;
+  --ink: #14161c;
+  --ink-soft: #5b6270;
+  --ink-faint: #8b91a0;
+  --line: #dde1e9;
+  --accent: #3a36c4;
+  --ac: #1f9d5a; /* good / pass */
+  --wa: #d23b3b; /* bad / fail */
+  --amber: #c08218; /* warn */
+
+  /* dark code-well surface */
+  --code-bg: #14161c;
+  --code-head-border: #23262f;
+  --code-lang: #79c0ff;
+  --code-text: #e6e8ee;
+  --code-muted: #8b91a0;
+
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
 html,
 body {
   height: 100%;
   margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* -- Dark code/output surface ------------------------------------------------ */
+.code-surface {
+  background: var(--code-bg);
+  color: var(--code-text);
+}
+
+.code-surface pre,
+pre.code-surface {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--code-head-border);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+/* CodeMirror dark polish so the editor blends into the ink well. */
+.code-surface .cm-editor {
+  background: var(--code-bg);
+  font-size: 0.82rem;
+}
+.code-surface .cm-editor.cm-focused {
+  outline: none;
+}
+.code-surface .cm-gutters {
+  background: var(--code-bg);
+  border-right: 1px solid #20232c;
+  color: #474d5c;
 }

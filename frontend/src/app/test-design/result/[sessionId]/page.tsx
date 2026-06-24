@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ProblemResultCard } from "../../../../components/ProblemResultCard";
@@ -8,13 +9,15 @@ import { ResultSummary } from "../../../../components/ResultSummary";
 import { getResult } from "../../../../lib/api";
 import type { ResultResponse } from "../../../../lib/types";
 
-export default function ResultPage({ params }: { params: { sessionId: string } }) {
+export default function ResultPage() {
+  const params = useParams<{ sessionId: string }>();
+  const sessionId = params.sessionId;
   const [result, setResult] = useState<ResultResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    getResult(params.sessionId)
+    getResult(sessionId)
       .then((r) => {
         if (active) setResult(r);
       })
@@ -24,7 +27,7 @@ export default function ResultPage({ params }: { params: { sessionId: string } }
     return () => {
       active = false;
     };
-  }, [params.sessionId]);
+  }, [sessionId]);
 
   if (error) {
     return (

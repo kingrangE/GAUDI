@@ -14,9 +14,9 @@ import styles from "../../sections.module.css";
 export const dynamic = "force-dynamic";
 
 type TrackPageProps = {
-  params: {
+  params: Promise<{
     trackId: string;
-  };
+  }>;
 };
 
 const routeToTrack: Record<string, TrackId> = {
@@ -32,8 +32,9 @@ const statusLabels: Record<EvaluationStatus, string> = {
   done: "완료",
 };
 
-export default function TrackDashboardPage({ params }: TrackPageProps) {
-  const trackId = routeToTrack[params.trackId];
+export default async function TrackDashboardPage({ params }: TrackPageProps) {
+  const { trackId: trackParam } = await params;
+  const trackId = routeToTrack[trackParam];
 
   if (!trackId) {
     notFound();
