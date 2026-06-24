@@ -6,14 +6,21 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "openai",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite",
+    "asyncpg",
+    "pydantic-settings",
+    "openai>=1.40",
+    "redis",
+    "rq",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "ruff",
+    "pytest-asyncio",
     "httpx",
+    "ruff",
 ]
 
 [tool.ruff]
@@ -24,12 +31,24 @@ select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Both foundations live under backend/: the shared app (`app/`) and minsu's
+# dev-prompting (`feature_dev_prompting/`, `llm/`, top-level modules). pythonpath
+# makes both importable during test collection regardless of install layout.
 pythonpath = ["."]
+asyncio_mode = "auto"
+markers = [
+    "integration: exercises a real external service (LLM); skipped without credentials",
+    "harness: offline judge-reliability harness tests",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-# No package code yet — placeholder scaffold so CI can run tests.
-py-modules = []
+# minsu's top-level single-file modules (standalone entry + demo solver + RQ worker).
+py-modules = ["main", "demo_solutions", "worker"]
+
+[tool.setuptools.packages.find]
+# Ship both foundations: the shared app package and minsu's dev-prompting packages.
+include = ["app*", "feature_dev_prompting*", "llm*"]
