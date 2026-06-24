@@ -15,5 +15,5 @@
     "isolatedModules": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src", "app", "next-env.d.ts"]
+  "include": ["src", "next-env.d.ts"]
 }
