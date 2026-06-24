@@ -46,8 +46,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-# minsu's top-level single-file modules (standalone entry + demo solver + RQ worker).
-py-modules = ["main", "demo_solutions", "worker"]
+# Top-level single-file modules: demo solver (dev-prompting) + RQ grading worker.
+py-modules = ["demo_solutions", "worker"]
 
 [tool.setuptools.packages.find]
 # Ship both foundations: the shared app package and minsu's dev-prompting packages.
