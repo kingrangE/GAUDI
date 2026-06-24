@@ -4,14 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-const NAV = [
-  { href: "/coding-test", label: "코딩 테스트" },
-  { href: "/cs-eval", label: "CS 심층 평가" },
-  { href: "/rejection-eval", label: "거부 능력 평가" },
-  { href: "/test-design", label: "테스트 설계 평가" },
-  { href: "/dev-prompting", label: "개발 프롬프팅" },
-];
-
 /** Light "judge console" top bar + page container used on every route. */
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -35,17 +27,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="rounded-sm border border-brand-200 px-2 py-[3px] font-mono text-[11px] tracking-[0.18em] text-brand-600">
             EVAL
           </span>
-          <nav className="ml-auto flex items-center gap-1 text-sm text-ink-soft">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-md px-3 py-1.5 hover:bg-paper hover:text-ink-900"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
         </div>
       </header>
       <main className="w-full flex-1 px-6 py-6">{children}</main>
