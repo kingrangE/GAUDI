@@ -1,8 +1,10 @@
-"""LLM generation: turn the candidate's prompt into a flawed design.
+"""LLM generation: turn the candidate's prompt into a design.
 
-The model designs what the candidate asked for, but deliberately injects 0..N
-flawed decisions and labels each item with ground truth (`is_flawed`,
-`flaw_type`, `explanation`). Unit tests mock this function.
+The model designs **only from the candidate's prompt** — it is never given the
+topic's functional-requirements spec. It faithfully follows what the candidate
+asked for and additionally injects 0..N intentional wrong designs
+(`is_flawed`/`flaw_type`). Whether each item is in the requirements is decided
+later by the judge. Unit tests mock this function.
 """
 
 from app.features.rejection_eval.schemas import GenerationOutput
@@ -12,6 +14,9 @@ _SYSTEM = """\
 당신은 소프트웨어 설계를 생성하는 AI입니다. 주어진 주제와 사용자(응시자)의 프롬프트에 따라
 구현을 위한 '기술 선택 결정' 항목 6~8개를 제시하세요. 각 항목은 '우리는 이런 기술/방식을
 선택하기로 했다' 형태의 한 문장 결정입니다.
+
+- **최대한 응시자 프롬프트에 충실하게** 설계하세요. 별도의 요구사항 명세는 주어지지 않습니다.
+  프롬프트가 모호하거나 빠진 부분은 합리적으로 결정하되, 임의로 범위를 넓히지 마세요.
 
 평가용으로, 이 항목들 중 0~N개에 **의도적인 결함**을 심으세요. 결함은 두 종류입니다:
 - wrong_tech: 기술을 잘못 적용함 (예: 비밀번호를 단순 SHA-256으로 저장)
