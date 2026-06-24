@@ -40,7 +40,9 @@ def test_submit_empty_400():
 
 def test_submit_without_judge_runs_deterministic_axes(monkeypatch):
     # No API key -> coverage/boundary unavailable, but grounding/conciseness still score.
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    # Set empty (not delenv): config reads backend/.env, but os.environ takes precedence,
+    # so "" reliably closes the judge gate regardless of a real .env on disk.
+    monkeypatch.setenv("OPENAI_API_KEY", "")
     res = client.post(
         "/api/context-engineering/submissions",
         json={"project_id": "todo-api", "claude_md": "`app/main.py` 실행은 `make test`"},

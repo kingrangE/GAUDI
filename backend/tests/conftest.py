@@ -6,23 +6,31 @@ calls are mocked per test. The OpenAI client is lazy, so importing the app never
 needs a key.
 """
 
-import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+import os
 
-import app.features.coding_test.models  # noqa: F401  (register tables on Base)
-import app.features.cs_eval.models  # noqa: F401  (register tables on Base)
-import app.features.mock_exam.models  # noqa: F401  (register tables on Base)
-import app.features.office_prompting.models  # noqa: F401  (register tables on Base)
-import app.features.rejection_eval.models  # noqa: F401  (register tables on Base)
-from app.db.base import Base
-from app.db.session import get_session
-from app.features.test_design import models as _test_design_models  # noqa: F401  (register tables)
-from app.features.test_design import services
-from app.features.test_design.schemas import JudgeMatch, JudgeOutput
-from app.main import app
+# Isolate the unit suite from a real backend/.env key. The central config now reliably
+# reads backend/.env (absolute path), so without this the suite could pick up a real
+# OPENAI_API_KEY and fire live API calls / flip integration-test skip guards. setdefault:
+# if a developer exports a real key, it wins and the gated integration tests run.
+os.environ.setdefault("OPENAI_API_KEY", "")
+
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
+
+import app.features.coding_test.models  # noqa: E402, F401  (register tables on Base)
+import app.features.cs_eval.models  # noqa: E402, F401  (register tables on Base)
+import app.features.mock_exam.models  # noqa: E402, F401  (register tables on Base)
+import app.features.office_prompting.models  # noqa: E402, F401  (register tables on Base)
+import app.features.rejection_eval.models  # noqa: E402, F401  (register tables on Base)
+from app.db.base import Base  # noqa: E402
+from app.db.session import get_session  # noqa: E402
+from app.features.test_design import models as _test_design_models  # noqa: E402, F401
+from app.features.test_design import services  # noqa: E402
+from app.features.test_design.schemas import JudgeMatch, JudgeOutput  # noqa: E402
+from app.main import app  # noqa: E402
 
 
 @pytest_asyncio.fixture
