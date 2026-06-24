@@ -6,14 +6,25 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
+    "allowJs": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] },
-    "jsx": "react-jsx",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["vitest/globals", "node"]
+    "skipLibCheck": true,
+    "incremental": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
+    "types": ["vitest/globals", "node", "@testing-library/jest-dom/vitest"],
+    "plugins": [{ "name": "next" }]
   },
-  "include": ["src", "next-env.d.ts"]
+  "include": [
+    "src",
+    "next.config.mjs",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
 }
