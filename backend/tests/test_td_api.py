@@ -9,16 +9,17 @@ async def _create_session(client, name="길원"):
     return resp.json()
 
 
-async def test_create_session_returns_five_problems_without_ground_truth(client):
+async def test_create_session_returns_six_problems_without_ground_truth(client):
     data = await _create_session(client)
     assert data["session_id"]
     assert data["candidate_name"] == "길원"
-    assert len(data["problems"]) == 5
+    assert len(data["problems"]) == 6
     for p in data["problems"]:
-        assert p["spec"] and p["code"]
-        # the hidden flaw list must never be serialized to the candidate
+        assert p["spec"] and p["difficulty"]
+        # the hidden answer set must never be serialized to the candidate
         assert "flaws" not in p
-        assert set(p.keys()) == {"index", "id", "title", "spec", "code"}
+        # prose-only: no code field is exposed
+        assert set(p.keys()) == {"index", "id", "title", "difficulty", "spec"}
 
 
 async def test_submit_scores_and_persists(client, mock_judge):
@@ -33,10 +34,11 @@ async def test_submit_scores_and_persists(client, mock_judge):
     assert resp.json() == {"problem_index": 0, "submitted": True}
 
     result = (await client.get(f"/test-design/sessions/{sid}/result")).json()
-    assert result["status"] == "in_progress"  # only 1 of 5 submitted
+    assert result["status"] == "in_progress"  # only 1 of 6 submitted
     problem = result["problems"][0]
-    # stub judge matches the first flaw (1 of 3) via candidate 0
-    assert problem["recall"] == pytest.approx(1 / 3)
+    assert problem["difficulty"] == "easy"  # problem_001 is an easy-tier scenario
+    # stub judge matches the first item (1 of 6 for problem_001) via candidate 0
+    assert problem["recall"] == pytest.approx(1 / 6)
     assert problem["precision"] == pytest.approx(1 / 2)  # 1 tp of 2 claims
     assert problem["flaws"][0]["found"] is True
     assert problem["flaws"][0]["quality"] == 2
