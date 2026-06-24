@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     # LLM-as-judge runs COLD by default: a judge must be reproducible (same submission ->
     # same verdict). Structured-output judging defaults to this; override via JUDGE_TEMPERATURE.
     judge_temperature: float = 0.0
+    # Per-request OpenAI timeout + retry cap. WITHOUT these the SDK default is 600s with
+    # backoff retries, so a slow/stuck call hangs the request (and the UI spinner) for
+    # minutes with nothing in the server log until it returns. A bounded timeout turns a
+    # silent stall into a fast, visible error. Override via LLM_TIMEOUT_SECONDS / LLM_MAX_RETRIES.
+    llm_timeout_seconds: float = 60.0
+    llm_max_retries: int = 1
 
     # dev-prompting solver — a small, *fixed* model so evaluation measures prompting
     # skill, not raw model power.

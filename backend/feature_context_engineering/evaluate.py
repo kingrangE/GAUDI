@@ -8,6 +8,8 @@ behavioral correctness/efficiency deltas are too noisy for a single live run (ke
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 from feature_context_engineering.judge import (
     COVERAGE_WEIGHT,
     DEFAULT_COVERAGE_RUNS,
@@ -46,8 +48,17 @@ def build_report(
 
     results: list[CriterionResult] = []
     if client is not None:
-        coverage, results = coverage_consensus(client, project, submission, runs=coverage_runs)
-        boundary = boundary_dimension(client, project, submission)
+        # Coverage (several judge calls) and boundary (one probe call) are independent —
+        # run them concurrently so the boundary call overlaps the coverage calls instead of
+        # waiting for them to finish. Combined with the parallel runs inside
+        # coverage_consensus, this collapses ~4 sequential LLM round-trips into ~1.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            coverage_future = pool.submit(
+                coverage_consensus, client, project, submission, runs=coverage_runs
+            )
+            boundary_future = pool.submit(boundary_dimension, client, project, submission)
+            coverage, results = coverage_future.result()
+            boundary = boundary_future.result()
     else:
         coverage = DimensionScore(
             key="coverage", label="컨벤션·모호성 커버리지", weight=COVERAGE_WEIGHT,
