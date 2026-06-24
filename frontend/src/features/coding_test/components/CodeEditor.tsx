@@ -14,6 +14,7 @@ export function CodeEditor({
     <CodeMirror
       value={value}
       height="100%"
+      theme="dark"
       extensions={[python()]}
       onChange={onChange}
       basicSetup={{ lineNumbers: true }}

@@ -4,6 +4,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/Button";
+import { CodeMeta, CodePanel } from "@/components/ui/CodePanel";
+import { Panel } from "@/components/ui/Panel";
+import { SectionLabel } from "@/components/ui/SectionLabel";
 import { isTerminal, useProblem, useRunMutation, useSubmitAndPoll } from "../queries";
 import { ProblemPane } from "./ProblemPane";
 import { ResultCards } from "./ResultCards";
@@ -12,7 +16,7 @@ import { RunResults } from "./RunResults";
 // CodeMirror is client-only — load it without SSR.
 const CodeEditor = dynamic(() => import("./CodeEditor"), {
   ssr: false,
-  loading: () => <p className="p-4 text-sm text-slate-500">에디터 로딩…</p>,
+  loading: () => <p className="p-4 text-sm text-ink-muted">에디터 로딩…</p>,
 });
 
 const TIMER_SECONDS = 30 * 60;
@@ -30,51 +34,53 @@ export function SolvePanel({ problemId }: { problemId: string }) {
   const run = useRunMutation(problemId);
   const { submit, result, submissionId } = useSubmitAndPoll(problemId, candidateId);
 
-  if (problemQuery.isPending) return <p className="p-8">불러오는 중…</p>;
+  if (problemQuery.isPending) return <p className="py-12 text-center text-slate-500">불러오는 중…</p>;
   if (problemQuery.isError || !problemQuery.data) {
-    return <p className="p-8 text-red-600">문제를 불러오지 못했습니다.</p>;
+    return <p className="py-12 text-center text-bad-600">문제를 불러오지 못했습니다.</p>;
   }
 
   const grading =
     submit.isPending || (Boolean(submissionId) && !isTerminal(result.data?.status));
 
   return (
-    <main className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b bg-white px-4 py-2">
-        <Link href="/coding-test" className="text-sm text-slate-500 hover:underline">
-          ← 목록
-        </Link>
-      </header>
-      <div className="grid flex-1 grid-cols-2 overflow-hidden">
-        <section className="overflow-y-auto border-r bg-white">
+    <div className="space-y-4">
+      <Link href="/coding-test" className="text-sm text-slate-500 hover:text-slate-800">
+        ← 문제 목록
+      </Link>
+
+      <div className="grid h-[calc(100vh-9.5rem)] grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
+        {/* Left — problem */}
+        <Panel className="min-h-0 overflow-hidden">
           <ProblemPane problem={problemQuery.data} timerSeconds={TIMER_SECONDS} />
-        </section>
-        <section className="flex flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-auto border-b">
-            <CodeEditor value={code} onChange={setCode} />
-          </div>
-          <div className="flex gap-2 border-b bg-white p-2">
-            <button
-              onClick={() => run.mutate(code)}
-              disabled={run.isPending}
-              className="rounded border px-3 py-1 text-sm disabled:opacity-50"
-            >
+        </Panel>
+
+        {/* Center — code editor (dark) */}
+        <CodePanel
+          label="내 코드"
+          meta={<CodeMeta>python</CodeMeta>}
+          flushBody
+          className="min-h-[320px]"
+        >
+          <CodeEditor value={code} onChange={setCode} />
+        </CodePanel>
+
+        {/* Right — run / grade */}
+        <Panel className="flex min-h-0 flex-col">
+          <SectionLabel>실행 &amp; 채점</SectionLabel>
+          <div className="mt-3 flex gap-2">
+            <Button onClick={() => run.mutate(code)} disabled={run.isPending}>
               실행
-            </button>
-            <button
-              onClick={() => submit.mutate(code)}
-              disabled={submit.isPending}
-              className="rounded bg-slate-900 px-3 py-1 text-sm text-white disabled:opacity-50"
-            >
+            </Button>
+            <Button variant="secondary" onClick={() => submit.mutate(code)} disabled={submit.isPending}>
               제출
-            </button>
+            </Button>
           </div>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4">
+          <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto">
             <RunResults data={run.data} isPending={run.isPending} />
             <ResultCards result={result.data} isPending={grading} />
           </div>
-        </section>
+        </Panel>
       </div>
-    </main>
+    </div>
   );
 }

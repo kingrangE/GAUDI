@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/Badge";
+
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -15,8 +17,8 @@ export function Timer() {
   }, []);
 
   return (
-    <span className="tag" aria-label="경과 시간">
+    <Badge tone="neutral" aria-label="경과 시간">
       ⏱ {pad(Math.floor(seconds / 60))}:{pad(seconds % 60)}
-    </span>
+    </Badge>
   );
 }

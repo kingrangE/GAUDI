@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/Badge";
+import { SectionLabel } from "@/components/ui/SectionLabel";
 import type { RunResponse } from "../types";
 
 export function RunResults({
@@ -12,14 +14,22 @@ export function RunResults({
 
   const passed = data.results.filter((r) => r.passed).length;
   return (
-    <div className="text-sm">
-      <p className="mb-2 font-medium">
-        샘플 결과: {passed}/{data.results.length} 통과
-      </p>
-      <ul className="space-y-1">
+    <div>
+      <div className="flex items-center justify-between">
+        <SectionLabel>샘플 실행</SectionLabel>
+        <Badge tone={passed === data.results.length ? "good" : "warn"}>
+          샘플 결과: {passed}/{data.results.length} 통과
+        </Badge>
+      </div>
+      <ul className="mt-2 space-y-1 text-sm">
         {data.results.map((r) => (
-          <li key={r.index} className={r.passed ? "text-green-700" : "text-red-700"}>
-            케이스 {r.index + 1}: {r.passed ? "통과" : `실패${r.error ? ` (${r.error})` : ""}`}
+          <li key={r.index} className="flex items-center gap-2">
+            <span className={r.passed ? "text-good-600" : "text-bad-600"}>
+              {r.passed ? "●" : "○"}
+            </span>
+            <span className={r.passed ? "text-slate-600" : "text-bad-700"}>
+              케이스 {r.index + 1}: {r.passed ? "통과" : `실패${r.error ? ` (${r.error})` : ""}`}
+            </span>
           </li>
         ))}
       </ul>
