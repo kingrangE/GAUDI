@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Team rule: commits are attributed to human authors only — no AI co-author trailers.
+# This hook strips any "Co-authored-by:" line that references an AI assistant
+# (Claude / Codex / Copilot / Anthropic / OpenAI / ChatGPT / GPT-*), then removes
+# any blank lines left dangling at the end of the message.
+#
+# Human co-authors (e.g. real teammates) are preserved.
+# Installed via: bash scripts/setup-hooks.sh   (sets core.hooksPath=.githooks)
+
+msg_file="$1"
+tmp="$(mktemp)"
+
+# Drop AI co-author trailer lines (case-insensitive).
+grep -viE '^[[:space:]]*co-authored-by:.*(claude|codex|copilot|anthropic|openai|chatgpt|gpt-|noreply@anthropic\.com)' \
+  "$msg_file" > "$tmp" || true
+
+# Trim trailing blank lines that may remain after removal.
+awk '{a[NR]=$0} END{n=NR; while(n>0 && a[n]==""){n--}; for(i=1;i<=n;i++) print a[i]}' \
+  "$tmp" > "$msg_file"
+
+rm -f "$tmp"
