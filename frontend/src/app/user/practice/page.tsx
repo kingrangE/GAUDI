@@ -8,6 +8,12 @@ const FEATURES = [
     desc: "문제를 직접 풀고, 히든 케이스 채점과 LLM 코드 품질 분석으로 실력을 평가합니다.",
   },
   {
+    href: "/cs-eval",
+    badge: "CS 서술형",
+    title: "CS 심층 평가",
+    desc: "CS 서술형 문항에 답하면, 정확·부분·솔직한 모름·허세-오답으로 이해의 깊이와 정직함을 채점합니다.",
+  },
+  {
     href: "/rejection-eval",
     badge: "거부 능력",
     title: "거부 능력 평가",
@@ -51,7 +57,7 @@ export default function PracticePage() {
         </h1>
         <p className="mt-3 max-w-3xl text-ink-soft">
           프롬프트 엔지니어링, 설계 명세, 컨텍스트 엔지니어링, 그리고 잘못된 AI 출력을 거부하는
-          능력까지 — LLM-as-a-judge로 측정하는 여섯 가지 평가를 제공합니다.
+          능력까지 — LLM-as-a-judge로 측정하는 일곱 가지 평가를 제공합니다.
         </p>
       </section>
 

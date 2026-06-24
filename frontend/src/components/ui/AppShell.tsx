@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 const NAV = [
   { href: "/coding-test", label: "코딩 테스트" },
+  { href: "/cs-eval", label: "CS 심층 평가" },
   { href: "/rejection-eval", label: "거부 능력 평가" },
   { href: "/test-design", label: "테스트 설계 평가" },
   { href: "/dev-prompting", label: "개발 프롬프팅" },
