@@ -70,11 +70,6 @@ pre.code-surface {
  * theme. They are migrated to shared components, but these light-theme fallbacks
  * keep any residual usage looking correct.
  */
-main {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
