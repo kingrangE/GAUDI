@@ -113,12 +113,18 @@ async def score_session(db: AsyncSession, session_id: str) -> ResultResponse:
     )
     attempts = list(result.scalars())
 
+    # The candidate may pick and complete a single topic — score only the
+    # attempts that were both generated and submitted; ignore untouched ones.
+    completed = [
+        a for a in attempts if a.generated_items is not None and a.selections is not None
+    ]
+    if not completed:
+        raise HTTPException(
+            status_code=409, detail="complete at least one topic before scoring"
+        )
+
     per_attempt_scores: list[dict] = []
-    for attempt in attempts:
-        if attempt.generated_items is None or attempt.selections is None:
-            raise HTTPException(
-                status_code=409, detail="all topics must be generated and submitted"
-            )
+    for attempt in completed:
         items = [GeneratedItem(**i) for i in attempt.generated_items]
         flagged_ids = list(attempt.selections.get("flagged_ids", []))
         reasons = dict(attempt.selections.get("reasons", {}))
@@ -160,7 +166,9 @@ async def get_result(db: AsyncSession, session_id: str) -> ResultResponse:
 
     topics: list[ResultTopic] = []
     for attempt in attempts:
-        judge_result = attempt.judge_result or {}
+        if attempt.judge_result is None:
+            continue  # only show topics that were actually completed and scored
+        judge_result = attempt.judge_result
         topics.append(
             ResultTopic(
                 topic_index=attempt.topic_index,

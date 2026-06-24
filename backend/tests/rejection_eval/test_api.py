@@ -53,30 +53,33 @@ async def _start_session(client) -> str:
     return body["session_id"]
 
 
-async def test_full_flow_unions_injected_and_out_of_scope(client, mock_llm):
+async def test_single_topic_flow_unions_injected_and_out_of_scope(client, mock_llm):
+    # The candidate picks and completes ONE topic (topic 0), then scores.
     session_id = await _start_session(client)
     base = f"/api/rejection-eval/sessions/{session_id}"
 
-    for idx in range(TOPIC_COUNT):
-        gen = await client.post(f"{base}/topics/{idx}/generate", json={"prompt": "구체적 지시"})
-        assert gen.status_code == 200
-        items = gen.json()["items"]
-        # ground truth must not leak to the candidate
-        assert all(set(i.keys()) == {"id", "text"} for i in items)
-        # should-reject set = {a (injected), b (out of scope)}.
-        # flag a (caught) and c (false alarm); miss b.
-        await client.post(f"{base}/topics/{idx}/submit", json={"flagged_ids": ["a", "c"]})
+    gen = await client.post(f"{base}/topics/0/generate", json={"prompt": "구체적 지시"})
+    assert gen.status_code == 200
+    items = gen.json()["items"]
+    # ground truth must not leak to the candidate
+    assert all(set(i.keys()) == {"id", "text"} for i in items)
+    # should-reject set = {a (injected), b (out of scope)}.
+    # flag a (caught) and c (false alarm); miss b.
+    await client.post(f"{base}/topics/0/submit", json={"flagged_ids": ["a", "c"]})
 
     score = await client.post(f"{base}/score")
     assert score.status_code == 200
     result = score.json()
     assert result["candidate_name"] == "익명"
     assert result["status"] == "scored"
-    # per topic: tp=1 (a), fp=1 (c), fn=1 (b) -> 0.5 everywhere
+    # only the one completed topic appears in the result
+    assert len(result["topics"]) == 1
+    # tp=1 (a), fp=1 (c), fn=1 (b) -> 0.5 everywhere
     assert result["precision"] == 0.5
     assert result["recall"] == 0.5
     assert result["f1"] == 0.5
     first = result["topics"][0]
+    assert first["topic_index"] == 0
     by_id = {i["id"]: i for i in first["items"]}
     assert by_id["a"]["outcome"] == "caught"
     assert by_id["a"]["flaw_source"] == "injected"
