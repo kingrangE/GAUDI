@@ -1,0 +1,19 @@
+{
+  "name": "and-you-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "and-you — AI Agent evaluation platform frontend (Next.js)",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.0.0"
+  }
+}
