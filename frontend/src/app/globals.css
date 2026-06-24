@@ -2,33 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
-/* test-design feature ships its own class-based dark theme (not Tailwind utilities). */
+/*
+ * Shared design system — light app shell, dark code/output panels, blue accent.
+ * The only dark zone in the UI is the "ink" code surface (see .code-surface below).
+ */
 :root {
-  --bg: #0f1115;
-  --panel: #181b22;
-  --panel-2: #20242e;
-  --text: #e7e9ee;
-  --muted: #9aa3b2;
-  --accent: #5b9dff;
-  --good: #4caf7e;
-  --bad: #ff6b6b;
-  --border: #2a2f3a;
+  --bg: #f8fafc; /* slate-50 */
+  --panel: #ffffff;
+  --border: #e2e8f0; /* slate-200 */
+  --text: #0f172a; /* slate-900 */
+  --muted: #64748b; /* slate-500 */
+  --accent: #3b5bdb; /* brand-600 */
+  --good: #059669;
+  --bad: #dc2626;
+
+  /* dark ink surface (code / agent output) */
+  --ink-900: #0f1115;
+  --ink-800: #181b22;
+  --ink-700: #20242e;
+  --ink-border: #2a2f3a;
+  --ink-text: #e7e9ee;
+  --ink-muted: #9aa3b2;
 }
 
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* -- Dark code/output surface ------------------------------------------------ */
+/* Applied to CodePanel bodies and any <pre> inside them. */
+.code-surface {
+  background: var(--ink-900);
+  color: var(--ink-text);
+}
+
+.code-surface pre,
+pre.code-surface {
+  background: var(--ink-800);
+  color: var(--ink-text);
+  border: 1px solid var(--ink-border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* CodeMirror dark theme polish so the editor blends into the ink surface. */
+.code-surface .cm-editor {
+  background: var(--ink-900);
+  font-size: 0.85rem;
+}
+.code-surface .cm-editor.cm-focused {
+  outline: none;
+}
+.code-surface .cm-gutters {
+  background: var(--ink-900);
+  border-right: 1px solid var(--ink-border);
+}
+
+/* -- Legacy class fallbacks -------------------------------------------------- */
+/*
+ * The test-design components historically used these class names with a full-dark
+ * theme. They are migrated to shared components, but these light-theme fallbacks
+ * keep any residual usage looking correct.
+ */
 main {
-  max-width: 860px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
-}
-
-h1,
-h2,
-h3 {
-  line-height: 1.3;
-}
-
-a {
-  color: var(--accent);
 }
 
 .panel {
@@ -38,52 +82,11 @@ a {
   padding: 1.25rem;
   margin-bottom: 1.25rem;
   color: var(--text);
+  box-shadow: 0 1px 3px 0 rgb(15 23 42 / 0.06);
 }
 
 .muted {
   color: var(--muted);
-}
-
-pre {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem;
-  overflow-x: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9rem;
-}
-
-button {
-  font: inherit;
-  cursor: pointer;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  padding: 0.55rem 1rem;
-}
-
-button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #0b1220;
-  font-weight: 600;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-input[type="text"] {
-  font: inherit;
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
 }
 
 .row {
@@ -101,6 +104,7 @@ input[type="text"] {
 .metric {
   font-size: 1.6rem;
   font-weight: 700;
+  color: var(--text);
 }
 
 .tag {
@@ -108,6 +112,7 @@ input[type="text"] {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   border: 1px solid var(--border);
+  color: var(--muted);
 }
 
 .found {

@@ -2,24 +2,33 @@
 
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/Badge";
 import { useProblems } from "../queries";
+
+function difficultyTone(difficulty: string): "good" | "warn" | "bad" | "neutral" {
+  const d = difficulty.toLowerCase();
+  if (d === "easy") return "good";
+  if (d === "medium") return "warn";
+  if (d === "hard") return "bad";
+  return "neutral";
+}
 
 export function ProblemList() {
   const { data, isPending, isError } = useProblems();
 
   if (isPending) return <p className="text-slate-500">불러오는 중…</p>;
-  if (isError || !data) return <p className="text-red-600">문제를 불러오지 못했습니다.</p>;
+  if (isError || !data) return <p className="text-bad-600">문제를 불러오지 못했습니다.</p>;
 
   return (
-    <ul className="divide-y rounded border bg-white">
+    <ul className="grid gap-3 sm:grid-cols-2">
       {data.map((problem) => (
         <li key={problem.id}>
           <Link
             href={`/coding-test/${problem.id}`}
-            className="flex items-center justify-between p-4 hover:bg-slate-50"
+            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-panel transition-colors hover:border-brand-300"
           >
-            <span className="font-medium">{problem.title}</span>
-            <span className="text-xs uppercase text-slate-500">{problem.difficulty}</span>
+            <span className="font-medium text-slate-900">{problem.title}</span>
+            <Badge tone={difficultyTone(problem.difficulty)}>{problem.difficulty}</Badge>
           </Link>
         </li>
       ))}

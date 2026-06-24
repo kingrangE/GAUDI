@@ -12,22 +12,32 @@ export function FlawListInput({ flaws, onChange }: Props) {
   const removeAt = (i: number) => onChange(flaws.filter((_, idx) => idx !== i));
 
   return (
-    <div>
+    <div className="space-y-2">
       {flaws.map((flaw, i) => (
-        <div className="row" key={i} style={{ marginBottom: "0.5rem" }}>
+        <div className="flex items-center gap-2" key={i}>
           <input
             type="text"
             value={flaw}
             placeholder={`발견한 결함 ${i + 1}`}
             aria-label={`발견한 결함 ${i + 1}`}
             onChange={(e: ChangeEvent<HTMLInputElement>) => updateAt(i, e.target.value)}
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
-          <button type="button" aria-label={`결함 ${i + 1} 삭제`} onClick={() => removeAt(i)}>
+          <button
+            type="button"
+            aria-label={`결함 ${i + 1} 삭제`}
+            onClick={() => removeAt(i)}
+            className="rounded-lg px-2 py-1 text-sm text-slate-400 hover:text-bad-600"
+          >
             삭제
           </button>
         </div>
       ))}
-      <button type="button" onClick={addOne}>
+      <button
+        type="button"
+        onClick={addOne}
+        className="text-sm font-medium text-brand-600 hover:text-brand-700"
+      >
         + 결함 추가
       </button>
     </div>

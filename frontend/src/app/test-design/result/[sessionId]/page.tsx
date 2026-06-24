@@ -28,29 +28,29 @@ export default function ResultPage({ params }: { params: { sessionId: string } }
 
   if (error) {
     return (
-      <main>
-        <p className="missed">{error}</p>
-        <Link href="/test-design">다시 시도</Link>
-      </main>
+      <div className="mx-auto max-w-3xl space-y-3">
+        <p className="text-bad-600">{error}</p>
+        <Link href="/test-design" className="text-sm font-medium text-brand-600 hover:text-brand-700">
+          다시 시도 →
+        </Link>
+      </div>
     );
   }
 
   if (!result) {
-    return (
-      <main>
-        <p className="muted">결과를 불러오는 중…</p>
-      </main>
-    );
+    return <p className="text-slate-500">결과를 불러오는 중…</p>;
   }
 
   return (
-    <main>
-      <h1>평가 결과</h1>
+    <div className="mx-auto max-w-3xl space-y-5">
+      <h1 className="text-2xl font-bold text-slate-900">평가 결과</h1>
       <ResultSummary result={result} />
       {result.problems.map((problem) => (
         <ProblemResultCard key={problem.problem_index} problem={problem} />
       ))}
-      <Link href="/test-design">새 평가 시작</Link>
-    </main>
+      <Link href="/test-design" className="inline-block text-sm font-medium text-brand-600 hover:text-brand-700">
+        새 평가 시작 →
+      </Link>
+    </div>
   );
 }
