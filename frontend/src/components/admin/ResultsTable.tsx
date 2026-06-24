@@ -4,14 +4,20 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { candidateResults, sortCandidateResults } from "@/lib/adminData";
+import {
+  formatScore,
+  formatTime,
+  sortAttempts,
+  statusLabel,
+  type AttemptSort,
+  type AttemptSummary,
+} from "@/lib/adminApi";
 
 import styles from "@/app/admin/sections.module.css";
 
-type ResultSort = "score-desc" | "score-asc" | "time-desc" | "time-asc";
 type SortField = "time" | "score";
 
-function nextSort(currentSort: ResultSort, field: SortField): ResultSort {
+function nextSort(currentSort: AttemptSort, field: SortField): AttemptSort {
   if (field === "time") {
     return currentSort === "time-desc" ? "time-asc" : "time-desc";
   }
@@ -19,7 +25,7 @@ function nextSort(currentSort: ResultSort, field: SortField): ResultSort {
   return currentSort === "score-desc" ? "score-asc" : "score-desc";
 }
 
-function SortIcon({ active, sort }: { active: boolean; sort: ResultSort }) {
+function SortIcon({ active, sort }: { active: boolean; sort: AttemptSort }) {
   if (!active) {
     return <ArrowUpDown aria-hidden="true" size={14} />;
   }
@@ -31,9 +37,13 @@ function SortIcon({ active, sort }: { active: boolean; sort: ResultSort }) {
   );
 }
 
-export function ResultsTable() {
-  const [sort, setSort] = useState<ResultSort>("score-desc");
-  const sortedResults = useMemo(() => sortCandidateResults(candidateResults, sort), [sort]);
+export function ResultsTable({ attempts }: { attempts: AttemptSummary[] }) {
+  const [sort, setSort] = useState<AttemptSort>("score-desc");
+  const sorted = useMemo(() => sortAttempts(attempts, sort), [attempts, sort]);
+
+  if (attempts.length === 0) {
+    return <p className={styles.muted}>아직 모의고사 응시 결과가 없습니다.</p>;
+  }
 
   return (
     <div className={styles.tableWrap}>
@@ -42,7 +52,7 @@ export function ResultsTable() {
           <tr>
             <th>순위</th>
             <th>응시자</th>
-            <th>역할</th>
+            <th>상태</th>
             <th>
               <button
                 className={styles.sortButton}
@@ -63,23 +73,21 @@ export function ResultsTable() {
                 <SortIcon active={sort.startsWith("score")} sort={sort} />
               </button>
             </th>
-            <th>강점</th>
-            <th>보완 필요</th>
+            <th>기능 수</th>
             <th>상세</th>
           </tr>
         </thead>
         <tbody>
-          {sortedResults.map((result, index) => (
-            <tr key={result.id}>
+          {sorted.map((attempt, index) => (
+            <tr key={attempt.id}>
               <td>{index + 1}</td>
-              <td>{result.name}</td>
-              <td>{result.role}</td>
-              <td>{result.completedAt}</td>
-              <td>{result.totalScore}</td>
-              <td>{result.strengths.join(", ")}</td>
-              <td>{result.weaknesses.join(", ")}</td>
+              <td>{attempt.candidate_label}</td>
+              <td>{statusLabel(attempt.status)}</td>
+              <td>{formatTime(attempt.completed_at)}</td>
+              <td>{formatScore(attempt.overall_normalized)}</td>
+              <td>{attempt.feature_count}</td>
               <td>
-                <Link className={styles.link} href={`/admin/results/${result.id}`}>
+                <Link className={styles.link} href={`/admin/results/${attempt.id}`}>
                   리포트 보기
                 </Link>
               </td>

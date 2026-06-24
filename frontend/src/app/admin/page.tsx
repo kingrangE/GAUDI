@@ -1,36 +1,56 @@
-import { Activity, CheckCircle2, Gauge } from "lucide-react";
+import { CheckCircle2, Clock, Gauge } from "lucide-react";
 import Link from "next/link";
 
 import { AdminShell } from "@/components/admin/AdminShell";
 import { USER_CODES } from "@/lib/accessCodes";
-import {
-  adminActivities,
-  adminMetrics,
-  candidateResults,
-  trackDashboards,
-  type AdminTone,
-} from "@/lib/adminData";
+import { fetchCandidates, formatScore, formatTime, statusLabel } from "@/lib/adminApi";
 
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 
-const toneClass: Record<AdminTone, string> = {
-  teal: styles.teal,
-  blue: styles.blue,
-  amber: styles.amber,
-  red: styles.red,
-  green: styles.green,
-};
+export default async function AdminPage() {
+  const candidates = await fetchCandidates();
 
-export default function AdminPage() {
-  const weaknessCount = candidateResults.reduce(
-    (total, result) => total + result.weaknesses.length,
-    0,
+  const completed = candidates.filter(
+    (c) => c.latest_attempt?.status === "completed",
   );
+  const scores = completed
+    .map((c) => c.latest_attempt?.overall_normalized)
+    .filter((s): s is number => typeof s === "number");
+  const averageScore = scores.length
+    ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
+    : null;
+
+  const metrics = [
+    {
+      id: "completed",
+      label: "모의고사 완료",
+      value: `${completed.length}/${candidates.length || USER_CODES.length}`,
+      detail: "응시자 기준",
+      tone: styles.green,
+      Icon: CheckCircle2,
+    },
+    {
+      id: "average",
+      label: "평균 점수",
+      value: averageScore === null ? "—" : String(averageScore),
+      detail: "완료 응시자 평균",
+      tone: styles.teal,
+      Icon: Gauge,
+    },
+    {
+      id: "pending",
+      label: "미완료",
+      value: String((candidates.length || USER_CODES.length) - completed.length),
+      detail: "미응시 또는 진행 중",
+      tone: styles.amber,
+      Icon: Clock,
+    },
+  ];
 
   return (
-    <AdminShell active="dashboard" eyebrow="해커톤 데모 운영" title="평가 현황 대시보드">
+    <AdminShell active="dashboard" eyebrow="모의고사 운영" title="모의고사 결과 대시보드">
       <section className={styles.codePanel} aria-labelledby="entry-codes-title">
         <div className={styles.panelHeaderCompact}>
           <div>
@@ -40,7 +60,7 @@ export default function AdminPage() {
         </div>
         <p className={styles.codeHint}>
           아래 코드 중 하나를 응시자에게 전달하세요. 입장 화면에서 이 코드를 입력하면 응시자 페이지로
-          진입합니다.
+          진입합니다. (연습 결과는 기록·집계되지 않으며, 모의고사 결과만 아래에 표시됩니다.)
         </p>
         <ul className={styles.codeList}>
           {USER_CODES.map((code) => (
@@ -51,11 +71,11 @@ export default function AdminPage() {
         </ul>
       </section>
 
-      <section className={styles.metricGrid} aria-label="관리 지표">
-        {adminMetrics.map((metric) => (
+      <section className={styles.metricGrid} aria-label="모의고사 지표">
+        {metrics.map((metric) => (
           <article className={styles.metric} key={metric.id}>
-            <div className={`${styles.metricIcon} ${toneClass[metric.tone]}`}>
-              <Gauge aria-hidden="true" size={18} />
+            <div className={`${styles.metricIcon} ${metric.tone}`}>
+              <metric.Icon aria-hidden="true" size={18} />
             </div>
             <p>{metric.label}</p>
             <strong>{metric.value}</strong>
@@ -64,104 +84,59 @@ export default function AdminPage() {
         ))}
       </section>
 
-      <div className={styles.contentGrid}>
-        <section className={styles.panel} aria-labelledby="tracks-title">
-          <div className={styles.panelHeader}>
-            <div>
-              <p className={styles.eyebrow}>평가 축</p>
-              <h2 id="tracks-title">항목별 대시보드</h2>
-            </div>
+      <section className={styles.panel} aria-labelledby="candidates-title">
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.eyebrow}>응시자</p>
+            <h2 id="candidates-title">응시자별 모의고사 현황</h2>
           </div>
+        </div>
 
-          <div className={styles.trackGrid}>
-            {trackDashboards.map((track) => (
-              <article className={styles.trackCard} key={track.id}>
+        <div className={styles.trackGrid}>
+          {candidates.map((candidate) => {
+            const attempt = candidate.latest_attempt;
+            const statusTone =
+              attempt?.status === "completed" ? styles.done : styles.pending;
+            return (
+              <article className={styles.trackCard} key={candidate.code}>
                 <div>
-                  <p className={styles.eyebrow}>{track.shortName}</p>
-                  <h3>{track.name}</h3>
-                  <p>{track.description}</p>
+                  <p className={styles.eyebrow}>{candidate.code}</p>
+                  <h3>{candidate.label}</h3>
+                  <span className={`${styles.status} ${statusTone}`}>
+                    {attempt ? statusLabel(attempt.status) : "미응시"}
+                  </span>
                 </div>
                 <div className={styles.trackStats}>
                   <div>
-                    <span>검토</span>
-                    <strong>{track.pendingReviews}</strong>
+                    <span>종합</span>
+                    <strong>{formatScore(attempt?.overall_normalized ?? null)}</strong>
                   </div>
                   <div>
-                    <span>평균</span>
-                    <strong>{track.averageScore}</strong>
+                    <span>완료</span>
+                    <strong>{formatTime(attempt?.completed_at ?? null)}</strong>
                   </div>
                   <div>
-                    <span>주의</span>
-                    <strong>{track.flaggedCount}</strong>
+                    <span>기능</span>
+                    <strong>{attempt?.feature_count ?? 0}</strong>
                   </div>
                 </div>
-                <Link className={styles.linkButton} href={track.resultRoute}>
-                  대시보드 보기
-                </Link>
+                {attempt ? (
+                  <Link className={styles.linkButton} href={`/admin/results/${attempt.id}`}>
+                    리포트 보기
+                  </Link>
+                ) : (
+                  <span className={styles.codeHint}>아직 응시 기록이 없습니다.</span>
+                )}
               </article>
-            ))}
-          </div>
-        </section>
-
-        <aside className={styles.sideStack}>
-          <section className={styles.panel} aria-labelledby="decision-title">
-            <div className={styles.panelHeaderCompact}>
-              <h2 id="decision-title">리포트 요약</h2>
-              <Activity aria-hidden="true" size={18} />
-            </div>
-            <div className={styles.decisionGrid}>
-              <div>
-                <span>응시자</span>
-                <strong>{candidateResults.length}</strong>
-              </div>
-              <div>
-                <span>보완 키워드</span>
-                <strong>{weaknessCount}</strong>
-              </div>
-              <div>
-                <span>평가 축</span>
-                <strong>{trackDashboards.length}</strong>
-              </div>
-            </div>
-          </section>
-
-          <section className={styles.panel} aria-labelledby="result-location-title">
-            <div className={styles.panelHeaderCompact}>
-              <h2 id="result-location-title">결과 위치</h2>
-              <span className={styles.badge}>2</span>
-            </div>
-            <div className={styles.resultLocation}>
-              <strong>응시자 상세</strong>
-              <span>개별 테스트 결과와 면접 질문 포인트</span>
-            </div>
-            <div className={styles.resultLocation}>
-              <strong>축별 대시보드</strong>
-              <span>평가 유형별 집계와 검토 우선순위</span>
-            </div>
-          </section>
-
-          <section className={styles.panel} aria-labelledby="activity-title">
-            <div className={styles.panelHeaderCompact}>
-              <h2 id="activity-title">최근 활동</h2>
-              <CheckCircle2 aria-hidden="true" size={18} />
-            </div>
-            <ol className={styles.activityList}>
-              {adminActivities.map((activity) => (
-                <li key={activity.id}>
-                  <CheckCircle2 aria-hidden="true" size={16} />
-                  <div>
-                    <strong>{activity.actor}</strong>
-                    <span>
-                      {activity.action} · {activity.target}
-                    </span>
-                    <time>{activity.happenedAt}</time>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </aside>
-      </div>
+            );
+          })}
+          {candidates.length === 0 ? (
+            <p className={styles.codeHint}>
+              백엔드에 연결할 수 없거나 아직 모의고사 응시 기록이 없습니다.
+            </p>
+          ) : null}
+        </div>
+      </section>
     </AdminShell>
   );
 }

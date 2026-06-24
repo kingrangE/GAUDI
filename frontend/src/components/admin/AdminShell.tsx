@@ -1,11 +1,11 @@
-import { BarChart3, ClipboardList, FileStack, LayoutDashboard, Settings } from "lucide-react";
+import { BarChart3, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AdminToolbar } from "./AdminToolbar";
 import styles from "./AdminShell.module.css";
 
-type AdminSection = "dashboard" | "problem-sets" | "sessions" | "results" | "settings";
+type AdminSection = "dashboard" | "results";
 
 type AdminShellProps = {
   active: AdminSection;
@@ -16,10 +16,7 @@ type AdminShellProps = {
 
 const navItems = [
   { key: "dashboard", label: "대시보드", href: "/admin", icon: LayoutDashboard },
-  { key: "problem-sets", label: "문제 세트", href: "/admin/problem-sets", icon: FileStack },
-  { key: "sessions", label: "평가 세션", href: "/admin/sessions", icon: ClipboardList },
   { key: "results", label: "결과 리포트", href: "/admin/results", icon: BarChart3 },
-  { key: "settings", label: "권한/설정", href: "/admin", icon: Settings },
 ] satisfies Array<{
   key: AdminSection;
   label: string;
