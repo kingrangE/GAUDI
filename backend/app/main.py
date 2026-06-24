@@ -25,6 +25,7 @@ from app.core.config import get_settings
 from app.db.session import init_models
 from app.features.coding_test.router import router as coding_test_router
 from app.features.cs_eval.router import router as cs_eval_router
+from app.features.office_prompting.router import router as office_prompting_router
 from app.features.rejection_eval.router import router as rejection_eval_router
 from app.features.test_design import models as _test_design_models  # noqa: F401  (register tables)
 from app.features.test_design.routes import router as test_design_router
@@ -61,6 +62,7 @@ app.add_middleware(
 )
 
 app.include_router(rejection_eval_router)
+app.include_router(office_prompting_router)
 app.include_router(coding_test_router)
 app.include_router(cs_eval_router)
 app.include_router(test_design_router)
