@@ -49,8 +49,8 @@
 
 .eyebrow {
   margin: 0 0 4px;
-  color: #3a36c4;
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  color: var(--accent);
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 800;
 }
@@ -69,7 +69,7 @@
 
 .muted {
   margin: 0;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -94,7 +94,7 @@
 }
 
 .table th {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 800;
 }
@@ -114,52 +114,52 @@
   place-items: center;
   border-radius: 8px;
   padding: 0 9px;
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 800;
 }
 
 .ready,
 .pass {
-  background: #e3f3ea;
-  color: #1f9d5a;
+  background: var(--good-tint);
+  color: var(--ac);
 }
 
 .running,
 .review {
-  background: #f6ecd5;
-  color: #c08218;
+  background: var(--warn-tint);
+  color: var(--amber);
 }
 
 .draft,
 .hold {
-  background: #f6ecd5;
-  color: #c08218;
+  background: var(--warn-tint);
+  color: var(--amber);
 }
 
 .closed {
-  background: #e6e5f7;
-  color: #3a36c4;
+  background: var(--brand-tint);
+  color: var(--accent);
 }
 
 .pending {
-  background: #f6ecd5;
-  color: #c08218;
+  background: var(--warn-tint);
+  color: var(--amber);
 }
 
 .reviewing {
-  background: #f6ecd5;
-  color: #c08218;
+  background: var(--warn-tint);
+  color: var(--amber);
 }
 
 .flagged {
-  background: #f7e3e3;
-  color: #d23b3b;
+  background: var(--bad-tint);
+  color: var(--wa);
 }
 
 .done {
-  background: #e3f3ea;
-  color: #1f9d5a;
+  background: var(--good-tint);
+  color: var(--ac);
 }
 
 .metaGrid {
@@ -181,7 +181,7 @@
 }
 
 .metaGrid span {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 700;
 }
@@ -195,13 +195,13 @@
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #eceef3;
+  background: var(--paper);
 }
 
 .progressFill {
   height: 100%;
   border-radius: inherit;
-  background: #3a36c4;
+  background: var(--accent);
 }
 
 .tagList,
@@ -216,9 +216,9 @@
 
 .tagList li {
   border-radius: 8px;
-  background: #eceef3;
+  background: var(--paper);
   padding: 7px 9px;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 750;
 }
@@ -233,13 +233,13 @@
   align-items: center;
   gap: 10px;
   min-height: 34px;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 13px;
   font-weight: 700;
 }
 
 .link {
-  color: #3a36c4;
+  color: var(--accent);
   font-weight: 800;
 }
 
@@ -264,13 +264,13 @@
 
 .actionButton {
   background: var(--surface);
-  color: #5b6270;
+  color: var(--ink-soft);
 }
 
 .actionActive {
-  border-color: #3a36c4;
-  background: #3a36c4;
-  color: #ffffff;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
 }
 
 .sortButton {
@@ -288,7 +288,7 @@
 }
 
 .sortButton:hover {
-  color: #3a36c4;
+  color: var(--accent);
 }
 
 .form {
@@ -302,7 +302,7 @@
 }
 
 .form label span {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 800;
 }
@@ -313,30 +313,30 @@
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
   padding: 0 11px;
-  color: #14161c;
+  color: var(--ink);
 }
 
 .form input:focus,
 .form select:focus {
-  border-color: #3a36c4;
-  outline: 2px solid #e6e5f7;
+  border-color: var(--accent);
+  outline: 2px solid var(--brand-tint);
 }
 
 .form button {
   min-height: 42px;
   border: 0;
   border-radius: 8px;
-  background: #3a36c4;
-  color: #ffffff;
+  background: var(--accent);
+  color: white;
   cursor: pointer;
   font-weight: 800;
 }
 
 .formMessage {
   margin: 0;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -356,7 +356,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  color: #5b6270;
+  color: var(--ink-soft);
   cursor: pointer;
   padding: 0 10px;
   font-size: 12px;
@@ -364,8 +364,8 @@
 }
 
 .cardActions button:hover {
-  border-color: #c3c8d4;
-  background: #eceef3;
+  border-color: var(--line-strong);
+  background: var(--paper);
 }
 
 @media (max-width: 1000px) {

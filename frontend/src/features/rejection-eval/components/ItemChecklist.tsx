@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/components/ui/cn";
 import type { PublicItem } from "../types";
 
@@ -33,9 +34,9 @@ export function ItemChecklist({ items, flagged, onToggle }: ItemChecklistProps) 
               />
               <span className="text-sm leading-relaxed text-ink-text">{item.text}</span>
               {isFlagged ? (
-                <span className="ml-auto shrink-0 rounded-full border border-bad-600 px-2 py-0.5 text-[11px] font-semibold text-bad-600">
+                <Badge tone="bad" className="ml-auto shrink-0">
                   거부
-                </span>
+                </Badge>
               ) : null}
             </label>
           </li>

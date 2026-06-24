@@ -16,7 +16,7 @@
 
 .codeHint {
   margin: 10px 0 0;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -33,13 +33,13 @@
 .codeChip {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #eceef3;
+  background: var(--paper);
   padding: 8px 14px;
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--mono);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #14161c;
+  color: var(--ink);
 }
 
 .metric,
@@ -69,7 +69,7 @@
 .metric p,
 .metric span {
   margin: 0;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 13px;
 }
 
@@ -79,28 +79,28 @@
 }
 
 .teal {
-  background: #e6e5f7;
-  color: #3a36c4;
+  background: var(--brand-tint);
+  color: var(--accent);
 }
 
 .blue {
-  background: #e6e5f7;
-  color: #3a36c4;
+  background: var(--brand-tint);
+  color: var(--accent);
 }
 
 .amber {
-  background: #f6ecd5;
-  color: #c08218;
+  background: var(--warn-tint);
+  color: var(--amber);
 }
 
 .red {
-  background: #f7e3e3;
-  color: #d23b3b;
+  background: var(--bad-tint);
+  color: var(--wa);
 }
 
 .green {
-  background: #e3f3ea;
-  color: #1f9d5a;
+  background: var(--good-tint);
+  color: var(--ac);
 }
 
 .contentGrid {
@@ -139,8 +139,8 @@
 
 .eyebrow {
   margin: 0;
-  color: #3a36c4;
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  color: var(--accent);
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 800;
 }
@@ -151,7 +151,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #eceef3;
+  background: var(--paper);
 }
 
 .segmented span {
@@ -160,7 +160,7 @@
   min-width: 80px;
   padding: 0 12px;
   border-right: 1px solid var(--line);
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 700;
 }
@@ -176,34 +176,34 @@
   place-items: center;
   border-radius: 8px;
   padding: 0 9px;
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 800;
 }
 
 .pending {
-  background: #f6ecd5;
-  color: #c08218;
+  background: var(--warn-tint);
+  color: var(--amber);
 }
 
 .reviewing {
-  background: #f6ecd5;
-  color: #c08218;
+  background: var(--warn-tint);
+  color: var(--amber);
 }
 
 .flagged {
-  background: #f7e3e3;
-  color: #d23b3b;
+  background: var(--bad-tint);
+  color: var(--wa);
 }
 
 .done {
-  background: #e3f3ea;
-  color: #1f9d5a;
+  background: var(--good-tint);
+  color: var(--ac);
 }
 
 .badge {
-  background: #f7e3e3;
-  color: #d23b3b;
+  background: var(--bad-tint);
+  color: var(--wa);
 }
 
 .sideStack {
@@ -239,7 +239,7 @@
 
 .trackCard p:not(.eyebrow) {
   margin-top: 8px;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -253,7 +253,7 @@
 .trackStats div {
   min-height: 64px;
   border-radius: 8px;
-  background: #eceef3;
+  background: var(--paper);
   padding: 10px;
 }
 
@@ -263,7 +263,7 @@
 }
 
 .trackStats span {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 750;
 }
@@ -278,8 +278,8 @@
   min-height: 38px;
   place-items: center;
   border-radius: 8px;
-  background: #3a36c4;
-  color: #ffffff;
+  background: var(--accent);
+  color: white;
   font-size: 13px;
   font-weight: 800;
 }
@@ -303,7 +303,7 @@
 }
 
 .decisionGrid span {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 700;
 }
@@ -333,7 +333,7 @@
 .riskItem span,
 .resultLocation span {
   margin-top: 3px;
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 13px;
 }
 
@@ -353,7 +353,7 @@
 
 .activityList svg {
   margin-top: 2px;
-  color: #1f9d5a;
+  color: var(--ac);
 }
 
 .activityList strong,
@@ -368,7 +368,7 @@
 
 .activityList span,
 .activityList time {
-  color: #5b6270;
+  color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.45;
 }

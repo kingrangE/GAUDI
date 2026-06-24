@@ -6,29 +6,63 @@
  * Shared design system — minsu's "judge console" language is the standard.
  * Light cool-gray chrome (paper/surface) + a dark "ink" code well + indigo accent,
  * with a monospace identity for kickers, verdicts and line numbers.
- * Tokens lifted verbatim from feature_dev_prompting/workspace.module.css.
+ *
+ * This :root block is the single source of truth for CSS-module surfaces. Feature
+ * CSS modules and the admin shell MUST reference these vars (var(--token)) — never
+ * re-declare or inline a raw hex. The Tailwind side mirrors these values in
+ * tailwind.config.ts (brand/ink/good/bad/warn keys).
  */
 :root {
+  /* chrome (light) */
   --paper: #eceef3;
   --surface: #ffffff;
+  --surface-2: #f6f7fa; /* subtle off-white: chips, briefs, feedback wells */
+  --field: #fbfbfd; /* form input background */
+  --line: #dde1e9;
+  --line-strong: #c3c8d4; /* hover/active border */
+
+  /* ink text */
   --ink: #14161c;
+  --ink-body: #2a2f3a; /* long-form body copy (softer than --ink) */
   --ink-soft: #5b6270;
   --ink-faint: #8b91a0;
-  --line: #dde1e9;
+
+  /* accent + verdict foregrounds */
   --accent: #3a36c4;
   --ac: #1f9d5a; /* good / pass */
   --wa: #d23b3b; /* bad / fail */
   --amber: #c08218; /* warn */
 
+  /* verdict tints (match the Badge primitive's *-50 backgrounds) */
+  --brand-tint: #eef0fb;
+  --good-tint: #e9f7ef;
+  --bad-tint: #fbecec;
+  --warn-tint: #f9f1df;
+
   /* dark code-well surface */
   --code-bg: #14161c;
+  --code-bg-2: #1a1d25; /* nested dark card (sample blocks) */
+  --code-bg-3: #0f1117; /* deepest dark well */
   --code-head-border: #23262f;
+  --code-gutter: #474d5c; /* line-number text */
   --code-lang: #79c0ff;
   --code-text: #e6e8ee;
+  --code-text-dim: #c9ccd6; /* secondary text on dark */
   --code-muted: #8b91a0;
+  --code-label: #9aa1b2; /* mono kicker on a dark surface (SectionLabel onDark) */
+
+  /* syntax highlighting (dark) — fn/builtin reuse --code-lang, plain text --code-text */
+  --syn-kw: #d6a2ff;
+  --syn-str: #9ece6a;
+  --syn-num: #f0a36b;
+  --syn-com: #6a7080;
+
+  /* elevation — mirrors Tailwind's shadow-panel */
+  --shadow: 0 1px 2px 0 rgb(20 22 28 / 0.04), 0 1px 3px 0 rgb(20 22 28 / 0.06);
 
   --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo",
+    "Noto Sans KR", sans-serif;
 }
 
 html,
@@ -73,6 +107,6 @@ pre.code-surface {
 }
 .code-surface .cm-gutters {
   background: var(--code-bg);
-  border-right: 1px solid #20232c;
-  color: #474d5c;
+  border-right: 1px solid var(--code-head-border);
+  color: var(--code-gutter);
 }

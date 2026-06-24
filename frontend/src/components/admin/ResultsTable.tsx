@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { Table } from "@/components/ui";
 import {
   formatScore,
   formatTime,
@@ -46,55 +47,56 @@ export function ResultsTable({ attempts }: { attempts: AttemptSummary[] }) {
   }
 
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>순위</th>
-            <th>응시자</th>
-            <th>상태</th>
-            <th>
-              <button
-                className={styles.sortButton}
-                onClick={() => setSort((currentSort) => nextSort(currentSort, "time"))}
-                type="button"
+    <Table className="min-w-[720px]">
+      <thead>
+        <tr>
+          <th>순위</th>
+          <th>응시자</th>
+          <th>상태</th>
+          <th>
+            <button
+              className="inline-flex cursor-pointer items-center gap-1.5 hover:text-brand-600"
+              onClick={() => setSort((currentSort) => nextSort(currentSort, "time"))}
+              type="button"
+            >
+              완료 시간
+              <SortIcon active={sort.startsWith("time")} sort={sort} />
+            </button>
+          </th>
+          <th>
+            <button
+              className="inline-flex cursor-pointer items-center gap-1.5 hover:text-brand-600"
+              onClick={() => setSort((currentSort) => nextSort(currentSort, "score"))}
+              type="button"
+            >
+              종합 점수
+              <SortIcon active={sort.startsWith("score")} sort={sort} />
+            </button>
+          </th>
+          <th>기능 수</th>
+          <th>상세</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((attempt, index) => (
+          <tr key={attempt.id}>
+            <td>{index + 1}</td>
+            <td>{attempt.candidate_label}</td>
+            <td>{statusLabel(attempt.status)}</td>
+            <td>{formatTime(attempt.completed_at)}</td>
+            <td>{formatScore(attempt.overall_normalized)}</td>
+            <td>{attempt.feature_count}</td>
+            <td>
+              <Link
+                className="font-semibold text-brand-600 hover:text-brand-700"
+                href={`/admin/results/${attempt.id}`}
               >
-                완료 시간
-                <SortIcon active={sort.startsWith("time")} sort={sort} />
-              </button>
-            </th>
-            <th>
-              <button
-                className={styles.sortButton}
-                onClick={() => setSort((currentSort) => nextSort(currentSort, "score"))}
-                type="button"
-              >
-                종합 점수
-                <SortIcon active={sort.startsWith("score")} sort={sort} />
-              </button>
-            </th>
-            <th>기능 수</th>
-            <th>상세</th>
+                리포트 보기
+              </Link>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {sorted.map((attempt, index) => (
-            <tr key={attempt.id}>
-              <td>{index + 1}</td>
-              <td>{attempt.candidate_label}</td>
-              <td>{statusLabel(attempt.status)}</td>
-              <td>{formatTime(attempt.completed_at)}</td>
-              <td>{formatScore(attempt.overall_normalized)}</td>
-              <td>{attempt.feature_count}</td>
-              <td>
-                <Link className={styles.link} href={`/admin/results/${attempt.id}`}>
-                  리포트 보기
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }
