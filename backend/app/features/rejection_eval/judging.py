@@ -9,7 +9,11 @@ Unit tests mock this function.
 
 import json
 
-from app.features.rejection_eval.schemas import GeneratedItem, JudgeOutput
+from app.features.rejection_eval.schemas import (
+    GeneratedItem,
+    JudgeOutput,
+    PairwiseVerdict,
+)
 from app.llm.structured import complete_structured
 
 _SYSTEM = """\
@@ -32,6 +36,7 @@ async def judge_attempt(
     items: list[GeneratedItem],
     flagged_ids: list[str],
     reasons: dict[str, str],
+    model: str | None = None,
 ) -> JudgeOutput:
     payload = {
         "requirements": requirements,
@@ -40,4 +45,31 @@ async def judge_attempt(
         "reasons": reasons,
     }
     user = json.dumps(payload, ensure_ascii=False)
-    return await complete_structured(_SYSTEM, user, JudgeOutput)
+    return await complete_structured(_SYSTEM, user, JudgeOutput, model=model)
+
+
+_PAIRWISE_SYSTEM = """\
+당신은 거부 능력 평가의 비교 채점관입니다. 어떤 기능의 **기능 요구사항 명세**와, AI가 생성한
+**설계 항목 목록**, 그리고 두 응시자 A·B가 각각 "잘못됐다고 거부한 항목 id 목록"이 주어집니다.
+
+요구사항에 비추어, **요구사항에 없는(범위 밖) 항목과 잘못된 설계를 더 정확히 골라 거부한** 응시자를
+판정하세요. 더 많이 맞히고 오탐(정상 항목을 거부)이 적은 쪽이 낫습니다. 두 제출의 품질이 사실상
+같으면 tie로 판정합니다. winner는 "A", "B", "tie" 중 하나, reason은 1줄 한국어 근거입니다.
+"""
+
+
+async def judge_pairwise(
+    requirements: list[str],
+    items: list[GeneratedItem],
+    flaws_a: list[str],
+    flaws_b: list[str],
+    model: str | None = None,
+) -> PairwiseVerdict:
+    payload = {
+        "requirements": requirements,
+        "items": [i.model_dump() for i in items],
+        "submission_a": flaws_a,
+        "submission_b": flaws_b,
+    }
+    user = json.dumps(payload, ensure_ascii=False)
+    return await complete_structured(_PAIRWISE_SYSTEM, user, PairwiseVerdict, model=model)
