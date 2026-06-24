@@ -44,4 +44,34 @@ describe("Workbench", () => {
     render(<Workbench />);
     expect(await screen.findByRole("alert")).toHaveTextContent("과제를 불러오지 못했습니다");
   });
+
+  it("exam mode: hides picker and result pane, calls onExamSubmit", async () => {
+    stubFetch();
+    const onExamSubmit = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <Workbench
+        examMode
+        examTaskId="login-signup"
+        onExamSubmit={onExamSubmit}
+      />,
+    );
+
+    // Task picker must be absent
+    expect(screen.queryByText("로그인 / 회원가입 기능 구현")).not.toBeInTheDocument();
+
+    // Brief from the locked task must appear
+    expect(await screen.findByText("로그인 회원가입 brief")).toBeInTheDocument();
+
+    // Result pane must not be rendered
+    expect(screen.queryByRole("region", { name: "평가 결과" })).not.toBeInTheDocument();
+
+    // Submit routes to onExamSubmit, not internal evaluate
+    await user.type(screen.getByLabelText("지시 입력"), "my instruction");
+    await user.click(screen.getByRole("button", { name: "지시 평가" }));
+
+    expect(onExamSubmit).toHaveBeenCalledWith("my instruction");
+    // Score never appears
+    expect(screen.queryByText("매우 우수")).not.toBeInTheDocument();
+  });
 });

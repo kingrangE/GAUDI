@@ -13,9 +13,13 @@ interface WorkspaceProps {
   problemId: string;
   // Provided by the server on assembly; otherwise the client fetches it.
   initialProblem?: ProblemPublic;
+  /** When true: locks to problemId, hides picker, hides score/verdict, submits via onExamSubmit. */
+  examMode?: boolean;
+  /** Called instead of runEvaluation when examMode is true. Receives all accumulated prompts. */
+  onExamSubmit?: (prompts: string[]) => Promise<void>;
 }
 
-export function Workspace({ problemId, initialProblem }: WorkspaceProps) {
+export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }: WorkspaceProps) {
   const [currentId, setCurrentId] = useState(problemId);
   const [problem, setProblem] = useState<ProblemPublic | null>(initialProblem ?? null);
   const [problems, setProblems] = useState<ProblemPublic[]>([]);
@@ -24,8 +28,9 @@ export function Workspace({ problemId, initialProblem }: WorkspaceProps) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load the problem list for the picker (best effort).
+  // Load the problem list for the picker (best effort). Skipped in exam mode.
   useEffect(() => {
+    if (examMode) return;
     let active = true;
     fetchProblems()
       .then((list) => {
@@ -37,7 +42,7 @@ export function Workspace({ problemId, initialProblem }: WorkspaceProps) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [examMode]);
 
   // Load the selected problem (skip if the initial one was supplied).
   useEffect(() => {
@@ -79,7 +84,11 @@ export function Workspace({ problemId, initialProblem }: WorkspaceProps) {
     setRunning(true);
     setError(null);
     try {
-      setResult(await runEvaluation(currentId, next));
+      if (examMode) {
+        if (onExamSubmit) await onExamSubmit(next);
+      } else {
+        setResult(await runEvaluation(currentId, next));
+      }
     } catch {
       setError("채점에 실패했습니다. 백엔드 연결을 확인하세요.");
     } finally {
@@ -99,7 +108,7 @@ export function Workspace({ problemId, initialProblem }: WorkspaceProps) {
       <header className={styles.topbar}>
         <span className={styles.brand}>and·you</span>
         <span className={styles.feature}>PROMPT JUDGE</span>
-        {problems.length > 1 ? (
+        {!examMode && problems.length > 1 ? (
           <select
             className={styles.picker}
             aria-label="문제 선택"
@@ -125,6 +134,7 @@ export function Workspace({ problemId, initialProblem }: WorkspaceProps) {
           latestTurn={latestTurn}
           result={result}
           error={error}
+          examMode={examMode}
         />
       </main>
     </div>

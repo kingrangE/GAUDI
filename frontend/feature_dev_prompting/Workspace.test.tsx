@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -61,6 +61,41 @@ function stubFetch(problemList: ProblemPublic[]) {
     }),
   );
 }
+
+describe("Workspace examMode", () => {
+  beforeEach(() => stubFetch([problem, { ...problem, id: "coin-change", title: "동전 교환" }]));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("hides picker and result; calls onExamSubmit with accumulated prompts", async () => {
+    const onExamSubmit = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <Workspace
+        problemId="sum-array"
+        initialProblem={problem}
+        examMode
+        onExamSubmit={onExamSubmit}
+      />,
+    );
+
+    // picker must be absent even though multiple problems are available
+    expect(screen.queryByRole("combobox", { name: "문제 선택" })).toBeNull();
+
+    // type a prompt and submit
+    await user.type(screen.getByPlaceholderText(/지시하세요/), "배열의 합을 구해줘");
+    await user.click(screen.getByRole("button", { name: "채점 실행" }));
+
+    // onExamSubmit receives the accumulated prompt list
+    await waitFor(() =>
+      expect(onExamSubmit).toHaveBeenCalledWith(["배열의 합을 구해줘"]),
+    );
+
+    // no score / verdict display
+    expect(screen.queryByText(/맞았습니다/)).toBeNull();
+    expect(screen.queryByText(/통과/)).toBeNull();
+    expect(screen.queryByText(/채점 결과가/)).toBeNull();
+  });
+});
 
 describe("Workspace", () => {
   beforeEach(() => stubFetch([problem]));

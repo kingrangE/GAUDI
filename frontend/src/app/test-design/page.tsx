@@ -3,13 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
-import { SectionLabel } from "@/components/ui/SectionLabel";
 import { getUserCode } from "@/lib/accessCodes";
 import { DIFFICULTY_ORDER, difficultyLabel } from "@/lib/difficulty";
-import { FlawListInput } from "../../components/FlawListInput";
-import { ProblemView } from "../../components/ProblemView";
+import { TestDesignWorkbench } from "../../components/TestDesignWorkbench";
 import { Timer } from "../../components/Timer";
 import { createSession, pendingSubmissionKey } from "../../lib/api";
 import type { ProblemPublic } from "../../lib/types";
@@ -80,7 +77,6 @@ export default function TestDesignPage() {
   }
 
   const problem = problems[selected];
-  const cleanedCount = flaws.map((f) => f.trim()).filter(Boolean).length;
 
   return (
     <div className="space-y-4 py-6">
@@ -115,28 +111,12 @@ export default function TestDesignPage() {
         </label>
       </Panel>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        {/* Left — the prose scenario to verify */}
-        <Panel className="min-h-0 overflow-y-auto">
-          <ProblemView problem={problem} />
-        </Panel>
-
-        {/* Right — verification items */}
-        <Panel className="flex min-h-0 flex-col">
-          <SectionLabel>추가 검증 항목</SectionLabel>
-          <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-            이미 구현된 기본 테스트 외에, 추가로 검증이 필요한 항목을 한 줄에 하나씩 설계하세요.
-          </p>
-          <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
-            <FlawListInput flaws={flaws} onChange={setFlaws} />
-          </div>
-          <div className="mt-4 flex items-center justify-end">
-            <Button disabled={cleanedCount === 0} onClick={submitAndViewResult}>
-              제출하고 결과 보기
-            </Button>
-          </div>
-        </Panel>
-      </div>
+      <TestDesignWorkbench
+        problem={problem}
+        flaws={flaws}
+        onFlawsChange={setFlaws}
+        onSubmit={submitAndViewResult}
+      />
     </div>
   );
 }

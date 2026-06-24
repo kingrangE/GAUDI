@@ -10,9 +10,11 @@ interface PromptPaneProps {
   latestTurn: TurnResult | null;
   result: EvaluationResult | null;
   error: string | null;
+  /** When true: hides score, verdict ledger, and feedback (scoring is server-side in exam). */
+  examMode?: boolean;
 }
 
-export function PromptPane({ onSubmit, running, latestTurn, result, error }: PromptPaneProps) {
+export function PromptPane({ onSubmit, running, latestTurn, result, error, examMode }: PromptPaneProps) {
   const [draft, setDraft] = useState("");
   const canSubmit = draft.trim().length > 0 && !running;
 
@@ -44,11 +46,11 @@ export function PromptPane({ onSubmit, running, latestTurn, result, error }: Pro
         {running ? "채점 중…" : "채점 실행"}
       </button>
       {error ? <div className={styles.error}>{error}</div> : null}
-      {result?.solved ? (
+      {!examMode && result?.solved ? (
         <div className={styles.solved}>맞았습니다 · {result.score.total}점</div>
       ) : null}
-      <VerdictLedger turn={latestTurn} running={running} />
-      {latestTurn && !latestTurn.solved && latestTurn.feedback ? (
+      {!examMode ? <VerdictLedger turn={latestTurn} running={running} /> : null}
+      {!examMode && latestTurn && !latestTurn.solved && latestTurn.feedback ? (
         <pre className={styles.feedback}>{latestTurn.feedback}</pre>
       ) : null}
     </section>

@@ -106,4 +106,32 @@ describe("Workspace (context-engineering)", () => {
     const picker = await screen.findByRole("combobox", { name: "프로젝트 선택" });
     expect(within(picker).getByRole("option", { name: "blog-api" })).toBeInTheDocument();
   });
+
+  it("exam mode: hides picker and score report; calls onExamSubmit with editor text", async () => {
+    // Multiple projects available — picker must still be absent in exam mode.
+    stubFetch([project, { ...project, id: "other", title: "other-project" }]);
+    const user = userEvent.setup();
+    const onExamSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <Workspace
+        projectId="cx-churn-radar"
+        initialProject={project}
+        examMode
+        onExamSubmit={onExamSubmit}
+      />,
+    );
+
+    // Picker must not be rendered.
+    expect(screen.queryByRole("combobox", { name: "프로젝트 선택" })).toBeNull();
+
+    // Edit the CLAUDE.md draft and submit.
+    await user.type(screen.getByRole("textbox"), "# CLAUDE.md\nexam content");
+    await user.click(screen.getByRole("button", { name: "제출" }));
+
+    expect(onExamSubmit).toHaveBeenCalledWith("# CLAUDE.md\nexam content");
+
+    // Score / evaluation report must not appear.
+    expect(screen.queryByLabelText("평가 결과")).toBeNull();
+  });
 });
