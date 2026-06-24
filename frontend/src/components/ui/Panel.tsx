@@ -20,11 +20,11 @@ export function Panel({
   return (
     <div
       className={cn(
-        "rounded-xl border",
+        "rounded-lg border",
         flush ? "" : "p-5",
         tone === "dark"
-          ? "code-surface border-ink-600"
-          : "border-slate-200 bg-white shadow-panel",
+          ? "code-surface border-ink-700"
+          : "border-line bg-surface shadow-panel",
         className,
       )}
       {...rest}

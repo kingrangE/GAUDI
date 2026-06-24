@@ -13,8 +13,8 @@ export function SectionLabel({ onDark = false, className, children, ...rest }: S
   return (
     <span
       className={cn(
-        "text-[11px] font-semibold uppercase tracking-[0.14em]",
-        onDark ? "text-ink-text/60" : "text-slate-400",
+        "font-mono text-[11px] font-medium uppercase tracking-[0.14em]",
+        onDark ? "text-[#9aa1b2]" : "text-ink-faint",
         className,
       )}
       {...rest}
