@@ -6,21 +6,14 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "sqlalchemy[asyncio]>=2.0",
-    "aiosqlite",
-    "asyncpg",
-    "pydantic-settings",
-    "openai>=1.40",
-    "redis",
-    "rq",
+    "openai",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "pytest-asyncio",
-    "httpx",
     "ruff",
+    "httpx",
 ]
 
 [tool.ruff]
@@ -31,15 +24,12 @@ select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-asyncio_mode = "auto"
-markers = [
-    "integration: exercises a real external service (LLM); skipped without credentials",
-    "harness: offline judge-reliability harness tests",
-]
+pythonpath = ["."]
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["app*"]
+[tool.setuptools]
+# No package code yet — placeholder scaffold so CI can run tests.
+py-modules = []

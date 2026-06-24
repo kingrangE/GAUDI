@@ -1,17 +1,13 @@
-import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "and-you Admin",
-  description: "Admin console for the and-you evaluation platform",
+export const metadata = {
+  title: "and·you — Prompt Judge",
+  description: "AI Agent 활용 역량 평가 플랫폼",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
       <body>{children}</body>

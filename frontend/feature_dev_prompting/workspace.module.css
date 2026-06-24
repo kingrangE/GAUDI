@@ -1,0 +1,459 @@
+/*
+ * Prompt Judge — a disciplined online-judge workspace.
+ * Light cool-gray chrome with a dark code well; monospace carries the "judge console"
+ * identity (kickers, verdicts, line numbers). One bold moment: the verdict ledger.
+ */
+
+.shell {
+  --paper: #eceef3;
+  --surface: #ffffff;
+  --ink: #14161c;
+  --ink-soft: #5b6270;
+  --ink-faint: #8b91a0;
+  --line: #dde1e9;
+  --accent: #3a36c4;
+  --ac: #1f9d5a;
+  --wa: #d23b3b;
+  --amber: #c08218;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+/* ---- top bar ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 52px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 15px;
+}
+.feature {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 2px;
+  padding: 3px 8px;
+}
+.picker {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.picker:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+}
+.spacer {
+  flex: 1;
+}
+.attempts {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* ---- three-pane grid ---- */
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.45fr) minmax(320px, 1fr);
+  min-height: 0;
+}
+.grid > section {
+  min-height: 0;
+  overflow: auto;
+}
+
+/* shared kickers */
+.kicker,
+.kickerLight {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.kicker {
+  color: var(--ink-faint);
+}
+.kickerLight {
+  color: #9aa1b2;
+}
+
+/* ---- problem pane ---- */
+.problem {
+  padding: 22px 24px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+.problemTitle {
+  margin: 8px 0 10px;
+  font-size: 23px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.meta {
+  display: flex;
+  gap: 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
+}
+.statement {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.75;
+  color: #2a2f3a;
+}
+.examples {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.exampleCard {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fafbfd;
+}
+.exampleNo {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  margin-bottom: 7px;
+}
+.exampleRow {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 3px 0;
+}
+.exampleRow + .exampleRow {
+  border-top: 1px dashed var(--line);
+}
+.exampleLabel {
+  flex: none;
+  width: 30px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+.exampleVal {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.starterTag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #8b91a0;
+  border: 1px solid #2a2e38;
+  padding: 2px 7px;
+  border-radius: 2px;
+}
+
+.constraints {
+  margin-top: 20px;
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+}
+.constraints pre {
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+}
+
+/* ---- code well (center) ---- */
+.code {
+  display: flex;
+  flex-direction: column;
+  background: var(--ink);
+}
+.codeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid #23262f;
+}
+.codeHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.langTag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #79c0ff;
+}
+.turnTag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #c9ccd6;
+  background: #23262f;
+  padding: 2px 7px;
+  border-radius: 2px;
+}
+
+/* code body: fixed gutter + highlighted lines, both monospace at the same line-height */
+.codeScroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.gutter {
+  flex: none;
+  padding: 14px 0;
+  text-align: right;
+  color: #474d5c;
+  user-select: none;
+  border-right: 1px solid #20232c;
+}
+.gutter > div {
+  padding: 0 12px 0 18px;
+}
+.codeBody {
+  margin: 0;
+  padding: 14px 0;
+  color: #e6e8ee;
+}
+.codeLine {
+  padding: 0 20px;
+  white-space: pre;
+}
+
+/* Python token colors (dark theme) */
+.tok_kw {
+  color: #d6a2ff;
+}
+.tok_bi {
+  color: #79c0ff;
+}
+.tok_str {
+  color: #9ece6a;
+}
+.tok_num {
+  color: #f0a36b;
+}
+.tok_com {
+  color: #6a7080;
+  font-style: italic;
+}
+.tok_txt {
+  color: #e6e8ee;
+}
+
+.codeEmpty {
+  margin: auto;
+  max-width: 280px;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #8b91a0;
+  padding: 40px 24px;
+}
+
+/* ---- prompt console (right) ---- */
+.prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 22px 28px;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+}
+.promptInput {
+  resize: vertical;
+  min-height: 96px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: #fbfbfd;
+}
+.promptInput:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+.runButton {
+  align-self: flex-start;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.runButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+.runButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.error {
+  font-size: 13px;
+  color: var(--wa);
+  background: color-mix(in srgb, var(--wa) 8%, transparent);
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+.solved {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ac);
+  background: color-mix(in srgb, var(--ac) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ac) 30%, transparent);
+  border-radius: 5px;
+  padding: 9px 12px;
+}
+
+/* ---- verdict ledger (signature) ---- */
+.ledgerEmpty,
+.ledgerRunning {
+  font-size: 13px;
+  color: var(--ink-faint);
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.ledgerRunning {
+  color: var(--accent);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.ledger {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.ledgerSummary {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+.caseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.caseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.caseName {
+  color: var(--ink-soft);
+}
+.caseVerdict {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.caseRow[data-tone="ac"] {
+  border-color: color-mix(in srgb, var(--ac) 40%, var(--line));
+}
+.caseRow[data-tone="ac"] .caseVerdict {
+  color: var(--ac);
+}
+.caseRow[data-tone="wa"] .caseVerdict {
+  color: var(--wa);
+}
+.caseRow[data-tone="tle"] .caseVerdict,
+.caseRow[data-tone="re"] .caseVerdict {
+  color: var(--amber);
+}
+
+.feedback {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  background: #f6f7fa;
+  border-radius: 5px;
+  padding: 10px 12px;
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  font-family: var(--mono);
+  color: #8b91a0;
+  background: #eceef3;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(240px, auto);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ledgerRunning {
+    animation: none;
+  }
+}

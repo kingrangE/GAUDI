@@ -17,32 +17,15 @@ pytest
 pytest tests/test_x.py::test_name   # single test
 ```
 
+## Feature layout
+- **One directory per feature**: `backend/feature_<name>/` (e.g. `feature_dev_prompting/`), each with a
+  `SPEC.md` (abstract spec) plus its modules. Build features in **isolation**; wire their routers into the
+  app only during **assembly**. Don't scatter a feature across shared folders.
+- Shared infra (e.g. the central LLM provider/model config) lives in `backend/llm/`.
+- Tests stay in `backend/tests/` as `test_<feature>_*.py`. Shared build config (`pyproject.toml`,
+  `.env.example`) is at the backend root.
+
 ## Conventions (fill in as the backend grows)
 - Centralize LLM provider/model config in one module; never scatter model IDs.
 - Secrets via `.env` only (see `.env.example`); never commit keys.
 - Tests in `tests/` as `test_*.py`; **mock the LLM** in unit tests. See the `test-writing` skill.
-
-## Coding-test grading (async, RQ)
-
-Submitting code grades asynchronously: the API returns immediately with
-`status=grading` and the client polls `GET /api/coding-test/submissions/{id}`.
-
-- `grading_mode` (env / `app/core/config.py`): `inline` (default — grades
-  in-process; used by tests and no-broker setups) or `rq` (enqueues to a worker).
-- Run the async path locally:
-  ```bash
-  docker compose up -d redis        # from repo root
-  cd backend
-  GRADING_MODE=rq uvicorn app.main:app --reload
-  GRADING_MODE=rq python worker.py  # separate terminal: the RQ grading worker
-  ```
-- Seed problems once: `python -m app.scripts.seed_problems`.
-
-## Sandbox security (coding-test runner)
-
-`SubprocessCodeRunner` executes untrusted candidate Python in an isolated
-`python -I` child with a wall-clock timeout, `resource` limits (address space /
-CPU / file descriptors), network disabled, and a temp cwd. This is
-**defense-in-depth, not airtight isolation** — suitable for a proctored /
-trusted-candidate demo, **never** exposed to the open internet as-is. The
-`CodeRunner` interface is the seam to drop in a hardened Docker/Piston runner.

@@ -6,7 +6,6 @@
 # Python
 __pycache__/
 *.py[cod]
-*.db
 .venv/
 venv/
 *.egg-info/
@@ -21,8 +20,8 @@ out/
 dist/
 coverage/
 npm-debug.log*
+next-env.d.ts
 *.tsbuildinfo
-dev-server*.log
 
 # OS / editor
 .DS_Store
