@@ -2,6 +2,7 @@ import { Activity, CheckCircle2, Gauge } from "lucide-react";
 import Link from "next/link";
 
 import { AdminShell } from "@/components/admin/AdminShell";
+import { USER_CODES } from "@/lib/accessCodes";
 import {
   adminActivities,
   adminMetrics,
@@ -30,6 +31,26 @@ export default function AdminPage() {
 
   return (
     <AdminShell active="dashboard" eyebrow="해커톤 데모 운영" title="평가 현황 대시보드">
+      <section className={styles.codePanel} aria-labelledby="entry-codes-title">
+        <div className={styles.panelHeaderCompact}>
+          <div>
+            <p className={styles.eyebrow}>응시자 배포용</p>
+            <h2 id="entry-codes-title">유저 입장 코드</h2>
+          </div>
+        </div>
+        <p className={styles.codeHint}>
+          아래 코드 중 하나를 응시자에게 전달하세요. 입장 화면에서 이 코드를 입력하면 응시자 페이지로
+          진입합니다.
+        </p>
+        <ul className={styles.codeList}>
+          {USER_CODES.map((code) => (
+            <li className={styles.codeChip} key={code}>
+              {code}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className={styles.metricGrid} aria-label="관리 지표">
         {adminMetrics.map((metric) => (
           <article className={styles.metric} key={metric.id}>
