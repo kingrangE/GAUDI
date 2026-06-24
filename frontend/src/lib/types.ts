@@ -7,6 +7,8 @@ export interface ProblemPublic {
   difficulty: string;
   // Prose scenario (service + feature + tech + how it's built). No code to review.
   spec: string;
+  // Basic tests assumed already implemented — shown as a starting point.
+  provided_tests: string[];
 }
 
 export interface CreateSessionResponse {
@@ -35,6 +37,7 @@ export interface ResultProblem {
   problem_id: string;
   title: string;
   difficulty: string;
+  provided_tests: string[];
   candidate_flaws: string[];
   flaws: ResultFlaw[];
   false_positives: string[];
