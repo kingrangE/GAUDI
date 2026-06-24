@@ -16,6 +16,11 @@ export default function HomePage() {
             거부 능력 평가 →
           </Link>
         </li>
+        <li>
+          <Link className="text-blue-600 hover:underline" href="/test-design">
+            테스트 설계 평가 →
+          </Link>
+        </li>
       </ul>
     </main>
   );
