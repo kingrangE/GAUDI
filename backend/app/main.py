@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.session import init_models
+from app.features.coding_test.router import router as coding_test_router
 from app.features.rejection_eval.router import router as rejection_eval_router
 
 
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(rejection_eval_router)
+app.include_router(coding_test_router)
 
 
 @app.get("/health")
