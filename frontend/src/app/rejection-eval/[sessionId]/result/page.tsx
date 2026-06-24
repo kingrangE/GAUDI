@@ -3,14 +3,30 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/Badge";
 import { Metric } from "@/components/ui/Metric";
 import { Panel } from "@/components/ui/Panel";
 import { getResult } from "@/features/rejection-eval/api";
 import { OutcomeBadge } from "@/features/rejection-eval/components/OutcomeBadge";
-import type { ResultResponse } from "@/features/rejection-eval/types";
+import type { FlawSource, ResultResponse } from "@/features/rejection-eval/types";
 
 function pct(x: number): string {
   return `${Math.round(x * 100)}%`;
+}
+
+const FLAW_SOURCE_META: Record<
+  FlawSource,
+  { label: string; tone: "bad" | "warn" } | null
+> = {
+  injected: { label: "잘못된 설계", tone: "bad" },
+  out_of_scope: { label: "요구사항에 없음", tone: "warn" },
+  none: null,
+};
+
+function FlawSourceBadge({ source }: { source: FlawSource }) {
+  const meta = FLAW_SOURCE_META[source];
+  if (!meta) return null;
+  return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
 
 function MetricRow({
@@ -74,8 +90,9 @@ export default function ResultPage() {
           <ul className="space-y-3">
             {topic.items.map((item) => (
               <li key={item.id} className="border-t border-line pt-3 first:border-0 first:pt-0">
-                <div className="flex items-start gap-2">
+                <div className="flex flex-wrap items-start gap-2">
                   <OutcomeBadge outcome={item.outcome} />
+                  <FlawSourceBadge source={item.flaw_source} />
                   <span className="text-sm text-ink-900">{item.text}</span>
                 </div>
                 <p className="mt-1 text-xs text-ink-soft">{item.explanation}</p>
