@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins for the frontend.
     cors_origins: str = "http://localhost:3000"
 
+    # Optional shared secret guarding the admin read API. When set, admin
+    # requests must send it as the `X-Admin-Token` header. Empty = open
+    # (dev/demo default; the frontend already gates entry behind the ADMIN code).
+    admin_token: str = ""
+
     # Background grading. "inline" runs grading in-process (default; used by
     # tests and a no-broker setup); "rq" enqueues to an RQ worker via Redis.
     redis_url: str = "redis://localhost:6379/0"
