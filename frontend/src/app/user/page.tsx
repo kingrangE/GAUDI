@@ -5,7 +5,7 @@ const ENTRIES = [
     href: "/user/practice",
     badge: "개별 연습",
     title: "개별 연습",
-    desc: "여섯 가지 평가를 항목별로 자유롭게 연습합니다. 원하는 평가를 골라 바로 시작하세요.",
+    desc: "여러 평가를 항목별로 자유롭게 연습합니다. 원하는 평가를 골라 바로 시작하세요.",
     cta: "연습 시작 →",
     ready: true,
   },
