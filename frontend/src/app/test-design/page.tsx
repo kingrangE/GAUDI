@@ -143,9 +143,9 @@ export default function TestDesignPage() {
 
         {/* Right — verification items */}
         <Panel className="flex min-h-0 flex-col">
-          <SectionLabel>검증 항목</SectionLabel>
+          <SectionLabel>추가 검증 항목</SectionLabel>
           <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-            이 기능 구현에서 반드시 확인·검증해야 할 항목을 한 줄에 하나씩 적으세요.
+            이미 구현된 기본 테스트 외에, 추가로 검증이 필요한 항목을 한 줄에 하나씩 설계하세요.
           </p>
           <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
             <FlawListInput flaws={flaws} onChange={setFlaws} />

@@ -28,6 +28,22 @@ export function ProblemResultCard({ problem }: { problem: ResultProblem }) {
         <p className="rounded-lg bg-paper p-3 text-sm italic text-ink-soft">{problem.report}</p>
       ) : null}
 
+      {problem.provided_tests.length > 0 ? (
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+            제공된 기본 테스트
+          </h4>
+          <ul className="mt-2 space-y-1">
+            {problem.provided_tests.map((test) => (
+              <li key={test} className="flex items-start gap-2 text-sm text-ink-soft">
+                <span className="text-ink-faint">✓</span>
+                <span>{test}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div>
         <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">핵심 검증 항목</h4>
         <ul className="mt-2 space-y-1.5">

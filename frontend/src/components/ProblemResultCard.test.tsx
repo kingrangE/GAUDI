@@ -9,6 +9,7 @@ const problem: ResultProblem = {
   problem_id: "problem_001",
   title: "프로필 이미지 업로드",
   difficulty: "easy",
+  provided_tests: ["정상 업로드가 성공한다"],
   candidate_flaws: ["파일 크기 상한"],
   flaws: [
     {
@@ -42,6 +43,8 @@ describe("ProblemResultCard", () => {
   it("shows found and missed items, false positives, difficulty, and the report", () => {
     render(<ProblemResultCard problem={problem} />);
     expect(screen.getByText("쉬움")).toBeTruthy();
+    expect(screen.getByText("제공된 기본 테스트")).toBeTruthy();
+    expect(screen.getByText("정상 업로드가 성공한다")).toBeTruthy();
     expect(screen.getByText(/파일 크기 상한이 없다/)).toBeTruthy();
     expect(screen.getByText(/Content-Type 검증 없음/)).toBeTruthy();
     expect(screen.getByText(/엉뚱한 지적/)).toBeTruthy();
