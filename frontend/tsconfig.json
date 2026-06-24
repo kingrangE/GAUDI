@@ -8,8 +8,12 @@
     "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "jsx": "preserve",
-    "types": ["vitest/globals"]
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["vitest/globals", "node"]
   },
-  "include": ["src"]
+  "include": ["src", "app", "next-env.d.ts"]
 }
