@@ -186,3 +186,59 @@ class ChecklistJudgeScorer:
         if missed:
             detail += f"; missing: {', '.join(missed)}"
         return ComponentScore(name=self.name, score=score, detail=detail)
+
+
+_PAIRWISE_SYSTEM = (
+    "두 개의 CLAUDE.md(에이전트 컨텍스트 파일)가 같은 프로젝트에 대해 작성되었습니다. 프로젝트, "
+    "파일 트리, 그리고 후보 A와 B가 주어집니다. 어느 쪽이 코딩 에이전트를 더 잘 안내하는지 "
+    "고르세요 — 프로젝트의 필수 명령·구조·컨벤션·경계를 더 정확하고 군더더기 없이 담은 쪽. "
+    "길이나 서식이 아니라 에이전트에게의 유용성으로 판단하고, 어느 쪽이 먼저 제시됐는지는 "
+    '무시하세요(내용만). JSON만 출력: {"winner": "A" | "B" | "tie", "reason": str}.'
+)
+
+
+def build_pairwise_prompt(project: Project, sub_a: Submission, sub_b: Submission) -> str:
+    """Compose the pairwise judge's user message (content-only, order-agnostic)."""
+
+    return (
+        f"# 프로젝트\n{project.title}\n{project.brief}\n\n# 파일 트리\n{_tree(project)}\n\n"
+        f"# 후보 A\n{sub_a.claude_md}\n\n# 후보 B\n{sub_b.claude_md}\n\n# 출력\nJSON만."
+    )
+
+
+def _parse_winner(raw: str) -> str:
+    """Pull {"winner": ...} out of the model output; default to 'tie' on anything unclear."""
+
+    obj: dict = {}
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            obj = parsed
+    except (json.JSONDecodeError, TypeError):
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, dict):
+                    obj = parsed
+            except json.JSONDecodeError:
+                obj = {}
+    winner = str(obj.get("winner", "")).strip().upper()
+    return winner if winner in ("A", "B") else "tie"
+
+
+def judge_pairwise(
+    client: LLMClient, project: Project, sub_a: Submission, sub_b: Submission
+) -> str:
+    """Ask which of two CLAUDE.md docs orients an agent better. Returns 'A' | 'B' | 'tie'.
+
+    Runs COLD (temperature 0.0) — a judge must be reproducible. Position bias is measured by
+    the harness re-running this with A/B swapped and checking whether the verdict flips.
+    """
+
+    raw = client.complete(
+        _PAIRWISE_SYSTEM,
+        build_pairwise_prompt(project, sub_a, sub_b),
+        temperature=0.0,
+    )
+    return _parse_winner(raw)
