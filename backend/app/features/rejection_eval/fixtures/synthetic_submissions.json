@@ -1,0 +1,9 @@
+[
+  {"key": "s1", "problem_index": 0, "author_model": "gpt-4o-mini", "flaws": ["i3", "i6", "i7"]},
+  {"key": "s2", "problem_index": 0, "author_model": "gpt-4o", "flaws": ["i3", "i6"]},
+  {"key": "s3", "problem_index": 0, "author_model": "gpt-4o-mini", "flaws": ["i3"]},
+  {"key": "s4", "problem_index": 1, "author_model": "gpt-4o", "flaws": ["j3", "j5", "j6"]},
+  {"key": "s5", "problem_index": 1, "author_model": "gpt-4o-mini", "flaws": ["j3", "j5"]},
+  {"key": "s6", "problem_index": 2, "author_model": "gpt-4o", "flaws": ["k4", "k5", "k6"]},
+  {"key": "s7", "problem_index": 2, "author_model": "gpt-4o-mini", "flaws": ["k4", "k5"]}
+]
