@@ -1,10 +1,11 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { getResult } from "@/features/rejection-eval/api";
+import { getResult, scoreSession } from "@/features/rejection-eval/api";
 import { ItemVerdictTable } from "@/features/rejection-eval/components/ItemVerdictTable";
 import { ScorePanel } from "@/features/rejection-eval/components/ScorePanel";
 import type { ResultResponse } from "@/features/rejection-eval/types";
@@ -17,13 +18,22 @@ export default function RejectionResultPage() {
 
   useEffect(() => {
     let active = true;
+    // On first visit the session isn't scored yet — getResult returns 409, so we
+    // run scoring here (the slow LLM judge). Re-visits hit the already-scored
+    // result and skip re-scoring.
     getResult(sessionId)
       .then((r) => {
         if (active) setResult(r);
       })
-      .catch(() => {
-        if (active) setError("결과를 불러오지 못했습니다.");
-      });
+      .catch(() =>
+        scoreSession(sessionId)
+          .then((r) => {
+            if (active) setResult(r);
+          })
+          .catch(() => {
+            if (active) setError("채점에 실패했습니다.");
+          }),
+      );
     return () => {
       active = false;
     };
@@ -43,7 +53,16 @@ export default function RejectionResultPage() {
     );
   }
   if (!result) {
-    return <p className="py-8 text-ink-soft">결과를 불러오는 중…</p>;
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-3 py-16 text-ink-soft"
+      >
+        <Loader2 className="h-6 w-6 animate-spin text-brand-600" aria-hidden />
+        <span>채점 중…</span>
+      </div>
+    );
   }
 
   const topic = result.topics[0];

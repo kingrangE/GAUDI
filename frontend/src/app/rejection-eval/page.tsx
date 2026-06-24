@@ -8,12 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { CodeMeta, CodePanel } from "@/components/ui/CodePanel";
 import { Panel } from "@/components/ui/Panel";
 import { SectionLabel } from "@/components/ui/SectionLabel";
-import {
-  createSession,
-  generateTopic,
-  scoreSession,
-  submitTopic,
-} from "@/features/rejection-eval/api";
+import { createSession, generateTopic, submitTopic } from "@/features/rejection-eval/api";
 import { ItemChecklist } from "@/features/rejection-eval/components/ItemChecklist";
 import type { PublicItem, TopicMeta } from "@/features/rejection-eval/types";
 
@@ -91,17 +86,10 @@ export default function RejectionEvalPage() {
     }
   }
 
-  async function onSeeResult() {
+  function onScore() {
     if (!sessionId) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await scoreSession(sessionId);
-      router.push(`/rejection-eval/result/${sessionId}`);
-    } catch {
-      setError("채점에 실패했습니다. 잠시 후 다시 시도하세요.");
-      setBusy(false);
-    }
+    // Navigate immediately; the result page runs the scoring and shows a spinner.
+    router.push(`/rejection-eval/result/${sessionId}`);
   }
 
   if (loading) {
@@ -192,9 +180,7 @@ export default function RejectionEvalPage() {
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-ink-soft">{flagged.length}개 거부함</span>
               {submitted ? (
-                <Button onClick={onSeeResult} disabled={busy}>
-                  {busy ? "채점 중…" : "결과 보기"}
-                </Button>
+                <Button onClick={onScore}>채점</Button>
               ) : (
                 <Button onClick={onSubmit} disabled={busy}>
                   {busy ? "제출 중…" : "제출"}
@@ -202,7 +188,7 @@ export default function RejectionEvalPage() {
               )}
             </div>
             {submitted ? (
-              <p className="text-sm text-good-600">제출됨 — 결과 보기를 누르면 채점합니다.</p>
+              <p className="text-sm text-good-600">제출됨 — 채점을 누르면 결과를 확인합니다.</p>
             ) : null}
           </div>
         )}
