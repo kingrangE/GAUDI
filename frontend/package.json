@@ -3,14 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "and-you — AI Agent evaluation platform frontend (Next.js)",
+  "description": "and-you frontend (Next.js)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --pool=forks --poolOptions.forks.singleFork=true"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.1.6",
@@ -23,15 +29,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/react": "^16.0.1",
-    "@testing-library/user-event": "^14.5.2",
-    "@types/node": "^20.16.0",
-    "@types/react": "^18.3.11",
+    "@types/node": "26.0.0",
+    "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.2",
-    "autoprefixer": "^10.4.20",
     "eslint": "^9.0.0",
     "globals": "^15.11.0",
     "jsdom": "^25.0.1",

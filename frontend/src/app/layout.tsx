@@ -1,23 +1,20 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 
 import "./globals.css";
-import { AppShell } from "@/components/ui/AppShell";
-import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "and-you — AI Agent 역량 평가",
-  description: "AI Agent 활용·검증 역량 평가 플랫폼",
+  title: "and-you Admin",
+  description: "Admin console for the and-you evaluation platform",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="ko">
-      <body className="min-h-screen bg-slate-50 text-slate-900">
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

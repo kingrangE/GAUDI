@@ -21,6 +21,8 @@ out/
 dist/
 coverage/
 npm-debug.log*
+*.tsbuildinfo
+dev-server*.log
 
 # OS / editor
 .DS_Store
