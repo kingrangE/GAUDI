@@ -25,6 +25,18 @@ const FEATURES = [
     title: "개발 프롬프팅 평가",
     desc: "AI 에이전트에게 지시를 내려 문제를 해결시키고, 프롬프트의 질을 채점합니다.",
   },
+  {
+    href: "/spec-design",
+    badge: "명세 설계",
+    title: "명세 설계 평가",
+    desc: "요구사항을 명세로 풀어내는 설계 역량을 요구사항·결정 품질·일관성으로 평가합니다.",
+  },
+  {
+    href: "/context-engineering",
+    badge: "컨텍스트",
+    title: "컨텍스트 엔지니어링 평가",
+    desc: "에이전트에게 필요한 컨텍스트만 정확히 골라 제공하는 역량을 측정합니다.",
+  },
 ];
 
 export default function HomePage() {
@@ -39,7 +51,7 @@ export default function HomePage() {
         </h1>
         <p className="mt-3 max-w-3xl text-ink-soft">
           프롬프트 엔지니어링, 설계 명세, 컨텍스트 엔지니어링, 그리고 잘못된 AI 출력을 거부하는
-          능력까지 — LLM-as-a-judge로 측정하는 네 가지 평가를 제공합니다.
+          능력까지 — LLM-as-a-judge로 측정하는 여섯 가지 평가를 제공합니다.
         </p>
       </section>
 

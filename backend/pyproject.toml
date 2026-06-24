@@ -13,6 +13,7 @@ dependencies = [
     "openai>=1.40",
     "redis",
     "rq",
+    "tiktoken",
 ]
 
 [project.optional-dependencies]
@@ -50,5 +51,11 @@ build-backend = "setuptools.build_meta"
 py-modules = ["demo_solutions", "worker"]
 
 [tool.setuptools.packages.find]
-# Ship both foundations: the shared app package and minsu's dev-prompting packages.
-include = ["app*", "feature_dev_prompting*", "llm*"]
+# Ship the shared app package and minsu's top-level feature packages + llm seam.
+include = [
+    "app*",
+    "feature_dev_prompting*",
+    "feature_spec_design*",
+    "feature_context_engineering*",
+    "llm*",
+]

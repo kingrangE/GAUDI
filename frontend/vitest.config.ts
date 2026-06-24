@@ -14,7 +14,12 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     css: false,
-    // Both foundations' setups: shared (jest-dom + cleanup) and minsu's feature setup.
-    setupFiles: ["./vitest.setup.ts", "./feature_dev_prompting/test-setup.ts"],
+    // Shared setup (jest-dom + cleanup) plus each minsu feature's own setup file.
+    setupFiles: [
+      "./vitest.setup.ts",
+      "./feature_dev_prompting/test-setup.ts",
+      "./feature_spec_design/test-setup.ts",
+      "./feature_context_engineering/test-setup.ts",
+    ],
   },
 });
