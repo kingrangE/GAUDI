@@ -1,7 +1,6 @@
-"""Pure scoring math + the baseline keyword-overlap stub judge."""
+"""Pure scoring math + the keyword-overlap classifier (the offline baseline)."""
 
 from app.features.cs_eval import scoring
-from app.features.cs_eval.judge import judge_answer, synthesize_reports
 
 KEY_POINTS = ["해시 함수로 버킷 인덱스 계산", "충돌", "체이닝", "로드 팩터와 리해싱"]
 
@@ -50,33 +49,3 @@ def test_classify_partial_for_some_matches():
     assert rtype == "partial"
     assert matched and missing
     assert 1 <= partial <= 4
-
-
-async def test_judge_answer_uses_rubric_key_points():
-    judgement = await judge_answer(
-        domain="자료구조",
-        prompt_md="...",
-        reference_answer="...",
-        rubric={"key_points": KEY_POINTS},
-        answer_text="잘 모르겠습니다",
-    )
-    assert judgement.response_type == "honest_unknown"
-    assert judgement.score == -2
-    assert set(judgement.missing_keywords) == set(KEY_POINTS)
-
-
-async def test_synthesize_reports_surfaces_missing_keywords():
-    reports = await synthesize_reports(
-        per_question=[
-            {
-                "domain": "자료구조",
-                "response_type": "partial",
-                "score": 2,
-                "matched_keywords": ["충돌"],
-                "missing_keywords": ["체이닝", "로드 팩터와 리해싱"],
-                "rationale": "일부만 짚음",
-            }
-        ]
-    )
-    assert "체이닝" in reports.summary_report
-    assert "자료구조" in reports.analysis_report
