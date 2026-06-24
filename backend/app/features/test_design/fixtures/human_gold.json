@@ -1,0 +1,7 @@
+[
+  { "key": "s1", "matched_ids": ["f1", "f2"], "recall": 0.6667 },
+  { "key": "s2", "matched_ids": ["f1"], "recall": 0.3333 },
+  { "key": "s3", "matched_ids": [], "recall": 0.0 },
+  { "key": "s4", "matched_ids": ["f1", "f2", "f3"], "recall": 1.0 },
+  { "key": "s5", "matched_ids": ["f1"], "recall": 0.3333 }
+]

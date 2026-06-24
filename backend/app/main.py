@@ -2,7 +2,8 @@
 
 Registers feature routers and creates tables on startup (hackathon-simple;
 Alembic comes later). Each feature lives under `app/features/<name>/` — importing
-its router also imports its models so `create_all()` discovers every table.
+its router (and, for test_design, its models) so a single `create_all()` discovers
+every table.
 """
 
 from contextlib import asynccontextmanager
@@ -12,7 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.session import init_models
+from app.features.coding_test.router import router as coding_test_router
 from app.features.rejection_eval.router import router as rejection_eval_router
+from app.features.test_design import models as _test_design_models  # noqa: F401  (register tables)
+from app.features.test_design.routes import router as test_design_router
 
 
 @asynccontextmanager
@@ -26,11 +30,14 @@ app = FastAPI(title="and-you backend", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origin_list,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(rejection_eval_router)
+app.include_router(coding_test_router)
+app.include_router(test_design_router)
 
 
 @app.get("/health")

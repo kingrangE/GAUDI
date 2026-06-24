@@ -1,0 +1,7 @@
+# Local infrastructure for development. Start with: docker compose up -d
+# Provides Redis for the RQ grading worker (see backend/worker.py).
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

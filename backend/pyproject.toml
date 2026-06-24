@@ -11,6 +11,8 @@ dependencies = [
     "asyncpg",
     "pydantic-settings",
     "openai>=1.40",
+    "redis",
+    "rq",
 ]
 
 [project.optional-dependencies]
@@ -30,6 +32,10 @@ select = ["E", "F", "I"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "integration: exercises a real external service (LLM); skipped without credentials",
+    "harness: offline judge-reliability harness tests",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
