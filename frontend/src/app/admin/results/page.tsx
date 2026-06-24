@@ -1,38 +1,38 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ResultsTable } from "@/components/admin/ResultsTable";
-import { candidateResults } from "@/lib/adminData";
+import { fetchExamResults } from "@/lib/adminApi";
 
 import styles from "../sections.module.css";
 
 export const dynamic = "force-dynamic";
 
-const averageScore = Math.round(
-  candidateResults.reduce((total, result) => total + result.totalScore, 0) /
-    candidateResults.length,
-);
+export default async function ResultsPage() {
+  const attempts = await fetchExamResults();
 
-const weaknessCount = candidateResults.reduce(
-  (total, result) => total + result.weaknesses.length,
-  0,
-);
+  const completed = attempts.filter((a) => a.status === "completed");
+  const scores = completed
+    .map((a) => a.overall_normalized)
+    .filter((s): s is number => typeof s === "number");
+  const averageScore = scores.length
+    ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
+    : "—";
 
-export default function ResultsPage() {
   return (
-    <AdminShell active="results" eyebrow="진단 리포트" title="응시자별 평가 결과">
+    <AdminShell active="results" eyebrow="모의고사 진단" title="응시자별 모의고사 결과">
       <div className={styles.grid}>
         <section className={styles.panel} aria-label="리포트 요약">
           <div className={styles.metaGrid}>
             <div>
-              <span>응시자</span>
-              <strong>{candidateResults.length}</strong>
+              <span>응시 건수</span>
+              <strong>{attempts.length}</strong>
+            </div>
+            <div>
+              <span>완료</span>
+              <strong>{completed.length}</strong>
             </div>
             <div>
               <span>평균 점수</span>
               <strong>{averageScore}</strong>
-            </div>
-            <div>
-              <span>보완 키워드</span>
-              <strong>{weaknessCount}</strong>
             </div>
           </div>
         </section>
@@ -40,33 +40,12 @@ export default function ResultsPage() {
         <section className={styles.panel} aria-labelledby="results-title">
           <div className={styles.panelHeader}>
             <div>
-              <p className={styles.eyebrow}>개인별 진단</p>
+              <p className={styles.eyebrow}>모의고사 진단</p>
               <h2 id="results-title">종합 리포트</h2>
             </div>
           </div>
 
-          <ResultsTable />
-        </section>
-
-        <section className={styles.cardGrid} aria-label="추가 운영 기능">
-          <article className={styles.card}>
-            <div>
-              <p className={styles.eyebrow}>다음 기능</p>
-              <h3>필터</h3>
-            </div>
-            <p className={styles.muted}>
-              평가 축, 보완 키워드, 점수 구간, 세션별로 결과를 좁혀야 한다.
-            </p>
-          </article>
-          <article className={styles.card}>
-            <div>
-              <p className={styles.eyebrow}>다음 기능</p>
-              <h3>리포트 내보내기</h3>
-            </div>
-            <p className={styles.muted}>
-              심사위원 공유용 PDF와 내부 분석용 CSV 다운로드가 필요하다.
-            </p>
-          </article>
+          <ResultsTable attempts={attempts} />
         </section>
       </div>
     </AdminShell>
