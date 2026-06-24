@@ -32,15 +32,24 @@ export interface DimensionResult {
   diverged: boolean;
 }
 
+export interface OverEngineeringItem {
+  label: string;
+  count: number;
+  prevalence: number; // 0..1
+}
+
 export interface SpecScore {
   total: number; // 0..100
+  base_score: number; // 3-axis blend before penalty
   requirement_score: number; // 0..100
   decision_score: number; // 0..100
   consistency: number; // 0..100
+  overengineering_penalty: number; // points subtracted
   grade: Grade;
   failed_requirements: string[];
   weak_decisions: string[];
   diverged_decisions: string[];
+  overengineered: string[];
   feedback: string;
 }
 
@@ -56,5 +65,6 @@ export interface EvaluationResult {
   score: SpecScore;
   requirements: RequirementResult[];
   dimensions: DimensionResult[];
+  overengineering: OverEngineeringItem[];
   samples: Sample[];
 }

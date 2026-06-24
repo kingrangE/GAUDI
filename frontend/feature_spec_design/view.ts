@@ -68,12 +68,21 @@ export function requirementsBySatisfaction(reqs: RequirementResult[]): Requireme
 export function headline(result: EvaluationResult): string {
   const { score, requirements } = result;
   const failed = requirements.filter((r) => !r.satisfied).length;
+  const over = score.overengineered.length;
   const grade = gradeMeta(score.grade).label;
-  if (failed === 0 && score.weak_decisions.length === 0 && score.diverged_decisions.length === 0) {
-    return `요구사항을 모두 충족하고 결정도 견고합니다 (${grade}).`;
+  if (
+    failed === 0 &&
+    over === 0 &&
+    score.weak_decisions.length === 0 &&
+    score.diverged_decisions.length === 0
+  ) {
+    return `요구사항을 모두 충족하고, 결정도 견고하며, 과설계도 없습니다 (${grade}).`;
   }
   if (failed > 0) {
     return `요구사항 ${requirements.length}개 중 ${failed}개 미충족 (${grade}).`;
+  }
+  if (over > 0) {
+    return `요구사항 밖 과설계 ${over}건이 감지됐습니다 (${grade}).`;
   }
   return `보완·미지정 결정이 남아 있습니다 (${grade}).`;
 }

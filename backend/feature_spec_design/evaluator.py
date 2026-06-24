@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from feature_spec_design.analyzer import (
     DEFAULT_DIVERGENCE_THRESHOLD,
+    DEFAULT_OVERENGINEERING_THRESHOLD,
     DEFAULT_REQUIREMENT_THRESHOLD,
     analyze,
 )
@@ -28,6 +29,7 @@ async def evaluate(
     temperature: float | None = None,
     divergence_threshold: float = DEFAULT_DIVERGENCE_THRESHOLD,
     requirement_threshold: float = DEFAULT_REQUIREMENT_THRESHOLD,
+    overengineering_threshold: float = DEFAULT_OVERENGINEERING_THRESHOLD,
 ) -> EvaluationResult:
     """Run the full spec-design evaluation for one instruction."""
 
@@ -39,14 +41,15 @@ async def evaluate(
     samples = await generate_samples(
         gen_client, task, instruction, n=n, temperature=temperature
     )
-    requirements, dimensions = await analyze(
+    requirements, dimensions, overengineering = await analyze(
         samples,
         task,
         judge_client,
         divergence_threshold=divergence_threshold,
         requirement_threshold=requirement_threshold,
+        overengineering_threshold=overengineering_threshold,
     )
-    score = score_spec(requirements, dimensions)
+    score = score_spec(requirements, dimensions, overengineering)
 
     return EvaluationResult(
         task_id=task.id,
@@ -55,5 +58,6 @@ async def evaluate(
         score=score,
         requirements=requirements,
         dimensions=dimensions,
+        overengineering=overengineering,
         samples=samples,
     )

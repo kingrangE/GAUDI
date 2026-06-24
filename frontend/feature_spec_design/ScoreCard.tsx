@@ -29,6 +29,11 @@ export function ScoreCard({ result }: { result: EvaluationResult }) {
         <span>
           일관성 <b>{Math.round(score.consistency)}</b>
         </span>
+        {score.overengineering_penalty > 0 ? (
+          <span className={styles.penalty}>
+            과설계 <b>−{Math.round(score.overengineering_penalty)}</b>
+          </span>
+        ) : null}
       </div>
       <p className={styles.feedbackText}>{score.feedback}</p>
     </section>

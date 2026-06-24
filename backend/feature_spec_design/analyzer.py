@@ -1,9 +1,10 @@
 """Judge each sample, then aggregate into requirement coverage + decision quality.
 
 The judge (low temperature) reads one sample and reports, against the task's explicit
-spec: which functional requirements it satisfies, and which graded option it chose for
-each decision dimension. Aggregation turns N judgements into per-requirement satisfaction
-rates and per-dimension `agreement × quality(modal)` scores.
+spec: which functional requirements it satisfies, which graded option it chose for each
+decision dimension, and any features built *beyond* the requirements (over-engineering).
+Aggregation turns N judgements into per-requirement satisfaction rates, per-dimension
+`agreement × quality(modal)` scores, and consistently-recurring out-of-scope features.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from feature_spec_design.models import (
     UNSPECIFIED,
     DecisionDimension,
     DimensionResult,
+    OverEngineeringItem,
     RequirementResult,
     Sample,
     SampleJudgement,
@@ -27,14 +29,21 @@ from llm.client import LLMClient
 
 DEFAULT_DIVERGENCE_THRESHOLD = 0.7
 DEFAULT_REQUIREMENT_THRESHOLD = 0.7
+# An out-of-scope feature counts as candidate-driven over-engineering only if it recurs in
+# at least this share of samples (rare ones are model gold-plating noise, not the prompt).
+DEFAULT_OVERENGINEERING_THRESHOLD = 0.5
 
 JUDGE_SYSTEM = (
     "You audit a backend implementation against an explicit spec. You are given the "
     "implementation text, a list of functional REQUIREMENTS (id + text), and a list of "
     "decision DIMENSIONS (key + allowed values). Respond with ONLY a JSON object: "
     '{"requirements_met": [<requirement ids clearly satisfied>], '
-    '"decisions": {<dimension key>: <one allowed value, or "unspecified" if not addressed>}}. '
-    "Use only the allowed values for decisions. No prose."
+    '"decisions": {<dimension key>: <one allowed value, or "unspecified" if not addressed>}, '
+    '"extra_scope": [<short snake_case labels of FEATURES built beyond the requirements>]}. '
+    "Use only the allowed values for decisions. For extra_scope, list only substantive "
+    "out-of-scope FEATURES (e.g. two_factor_auth, social_login, admin_dashboard, "
+    "rate_limiting, caching, password_reset). Do NOT list ordinary hygiene such as input "
+    "validation, error handling, or logging. No prose."
 )
 
 _FENCE = re.compile(r"```(?:json)?\s*\n(.*?)```", re.DOTALL)
@@ -87,7 +96,19 @@ def parse_judgement(raw: str, task: SpecTask, index: int) -> SampleJudgement:
         text = str(value).strip().lower() if value is not None else UNSPECIFIED
         decisions[dim.key] = text or UNSPECIFIED
 
-    return SampleJudgement(index=index, requirements_met=requirements_met, decisions=decisions)
+    extra_raw = data.get("extra_scope", [])
+    extra_scope = (
+        [str(x).strip().lower() for x in extra_raw if str(x).strip()]
+        if isinstance(extra_raw, list)
+        else []
+    )
+
+    return SampleJudgement(
+        index=index,
+        requirements_met=requirements_met,
+        decisions=decisions,
+        extra_scope=extra_scope,
+    )
 
 
 def judge_sample(client: LLMClient, task: SpecTask, sample: Sample) -> SampleJudgement:
@@ -152,6 +173,30 @@ def aggregate_dimensions(
     return results
 
 
+def aggregate_overengineering(
+    judgements: list[SampleJudgement], threshold: float
+) -> list[OverEngineeringItem]:
+    """Out-of-scope features that recur in >= threshold of samples (prompt-driven creep).
+
+    Counting only consistently-recurring extras filters out a model's one-off gold-plating
+    so we attribute scope creep to the instruction, not to sampling noise.
+    """
+
+    n = len(judgements) or 1
+    counts: Counter[str] = Counter()
+    for j in judgements:
+        for label in set(j.extra_scope):  # one vote per sample
+            counts[label] += 1
+
+    items = [
+        OverEngineeringItem(label=label, count=count, prevalence=round(count / n, 4))
+        for label, count in counts.items()
+        if count / n >= threshold
+    ]
+    items.sort(key=lambda it: it.count, reverse=True)
+    return items
+
+
 async def analyze(
     samples: list[Sample],
     task: SpecTask,
@@ -159,10 +204,12 @@ async def analyze(
     *,
     divergence_threshold: float = DEFAULT_DIVERGENCE_THRESHOLD,
     requirement_threshold: float = DEFAULT_REQUIREMENT_THRESHOLD,
-) -> tuple[list[RequirementResult], list[DimensionResult]]:
-    """Judge every sample concurrently, then aggregate requirements + dimensions."""
+    overengineering_threshold: float = DEFAULT_OVERENGINEERING_THRESHOLD,
+) -> tuple[list[RequirementResult], list[DimensionResult], list[OverEngineeringItem]]:
+    """Judge every sample concurrently, then aggregate the three signals."""
 
     judgements = await judge_all(client, task, samples)
     requirements = aggregate_requirements(judgements, task, requirement_threshold)
     dimensions = aggregate_dimensions(judgements, task, divergence_threshold)
-    return requirements, dimensions
+    overengineering = aggregate_overengineering(judgements, overengineering_threshold)
+    return requirements, dimensions, overengineering

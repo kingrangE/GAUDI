@@ -9,6 +9,7 @@ import threading
 
 from feature_spec_design.analyzer import (
     aggregate_dimensions,
+    aggregate_overengineering,
     aggregate_requirements,
     analyze,
     parse_judgement,
@@ -64,6 +65,13 @@ def test_parse_judgement_handles_junk():
     j = parse_judgement("not json", TASK, 3)
     assert j.requirements_met == []
     assert all(v == "unspecified" for v in j.decisions.values())
+    assert j.extra_scope == []
+
+
+def test_parse_judgement_extracts_extra_scope():
+    raw = '{"requirements_met": [], "decisions": {}, "extra_scope": ["Two_Factor_Auth", " "]}'
+    j = parse_judgement(raw, TASK, 0)
+    assert j.extra_scope == ["two_factor_auth"]  # lowercased, blanks dropped
 
 
 def test_analyze_confidently_wrong_decision_scores_zero():
@@ -74,7 +82,7 @@ def test_analyze_confidently_wrong_decision_scores_zero():
     }
     judge = FakeJudge(payload)
     samples = [type("S", (), {"index": i, "content": "x"})() for i in range(10)]
-    reqs, dims = asyncio.run(analyze(samples, TASK, judge))
+    reqs, dims, _over = asyncio.run(analyze(samples, TASK, judge))
 
     by_dim = {d.key: d for d in dims}
     pw = by_dim["password_storage"]
@@ -88,7 +96,7 @@ def test_analyze_consistently_omitted_requirement_fails():
     met = [r.id for r in TASK.requirements if r.id != "email_verification"]
     judge = FakeJudge({"requirements_met": met, "decisions": GOOD_DECISIONS})
     samples = [type("S", (), {"index": i, "content": "x"})() for i in range(10)]
-    reqs, dims = asyncio.run(analyze(samples, TASK, judge))
+    reqs, dims, _over = asyncio.run(analyze(samples, TASK, judge))
 
     assert judge.calls == 10
     by_req = {r.id: r for r in reqs}
@@ -125,3 +133,51 @@ def test_aggregate_requirements_rate():
     by_req = {r.id: r for r in reqs}
     assert by_req["signup"].satisfaction == 0.7
     assert by_req["signup"].satisfied is True
+
+
+def test_aggregate_overengineering_keeps_consistent_drops_rare():
+    from feature_spec_design.models import SampleJudgement
+
+    # 2fa appears in 8/10 (consistent -> candidate-driven), caching in 1/10 (noise).
+    juds = []
+    for i in range(10):
+        extra = []
+        if i < 8:
+            extra.append("two_factor_auth")
+        if i == 0:
+            extra.append("caching")
+        juds.append(SampleJudgement(index=i, requirements_met=[], decisions={}, extra_scope=extra))
+
+    items = aggregate_overengineering(juds, threshold=0.5)
+    labels = {it.label: it for it in items}
+    assert "two_factor_auth" in labels  # 0.8 >= 0.5
+    assert labels["two_factor_auth"].count == 8
+    assert labels["two_factor_auth"].prevalence == 0.8
+    assert "caching" not in labels  # 0.1 < 0.5 -> dropped as noise
+
+
+def test_aggregate_overengineering_counts_once_per_sample():
+    from feature_spec_design.models import SampleJudgement
+
+    # duplicate label within one sample must not double-count
+    juds = [
+        SampleJudgement(
+            index=i, requirements_met=[], decisions={}, extra_scope=["social_login", "social_login"]
+        )
+        for i in range(6)
+    ]
+    items = aggregate_overengineering(juds, threshold=0.5)
+    assert {it.label: it.count for it in items} == {"social_login": 6}
+
+
+def test_analyze_returns_overengineering():
+    payload = {
+        "requirements_met": [r.id for r in TASK.requirements],
+        "decisions": GOOD_DECISIONS,
+        "extra_scope": ["admin_dashboard"],
+    }
+    judge = FakeJudge(payload)
+    samples = [type("S", (), {"index": i, "content": "x"})() for i in range(10)]
+    _reqs, _dims, over = asyncio.run(analyze(samples, TASK, judge))
+    assert [it.label for it in over] == ["admin_dashboard"]
+    assert over[0].count == 10

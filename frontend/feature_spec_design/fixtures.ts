@@ -3,11 +3,22 @@
 import type {
   DimensionResult,
   EvaluationResult,
+  OverEngineeringItem,
   RequirementResult,
   Sample,
   SpecScore,
   TaskPublic,
 } from "./types";
+
+export function makeOverItem(over: Partial<OverEngineeringItem> = {}): OverEngineeringItem {
+  const count = over.count ?? 8;
+  return {
+    label: "two_factor_auth",
+    count,
+    prevalence: over.prevalence ?? count / 10,
+    ...over,
+  };
+}
 
 export function makeRequirement(over: Partial<RequirementResult> = {}): RequirementResult {
   const satisfaction = over.satisfaction ?? 1;
@@ -45,14 +56,17 @@ export function makeResult(over: Partial<EvaluationResult> = {}): EvaluationResu
   const samples: Sample[] = over.samples ?? [{ index: 0, content: "결정: FastAPI / PostgreSQL" }];
   const score: SpecScore = {
     total: 100,
+    base_score: 100,
     requirement_score: 100,
     decision_score: 100,
     consistency: 100,
+    overengineering_penalty: 0,
     grade: "excellent",
     failed_requirements: [],
     weak_decisions: [],
     diverged_decisions: [],
-    feedback: "요구사항을 모두 충족하고 설계 결정도 일관되고 견고합니다.",
+    overengineered: [],
+    feedback: "요구사항을 모두 충족하고, 결정도 견고하며, 과설계도 없습니다.",
     ...over.score,
   };
   return {
@@ -62,6 +76,7 @@ export function makeResult(over: Partial<EvaluationResult> = {}): EvaluationResu
     score,
     requirements,
     dimensions,
+    overengineering: over.overengineering ?? [],
     samples,
   };
 }

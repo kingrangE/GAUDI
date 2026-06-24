@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { fetchTasks, runEvaluation } from "./api";
 import { DimensionTable } from "./DimensionTable";
 import { InstructionForm } from "./InstructionForm";
+import { OverEngineeringList } from "./OverEngineeringList";
 import { RequirementsList } from "./RequirementsList";
 import { SampleList } from "./SampleList";
 import { ScoreCard } from "./ScoreCard";
@@ -95,6 +96,7 @@ export function Workbench() {
             <>
               <ScoreCard result={result} />
               <RequirementsList requirements={result.requirements} />
+              <OverEngineeringList items={result.overengineering} />
               <DimensionTable dimensions={result.dimensions} />
               <SampleList samples={result.samples} />
             </>

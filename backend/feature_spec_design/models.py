@@ -80,11 +80,20 @@ class Sample(BaseModel):
 
 
 class SampleJudgement(BaseModel):
-    """The judge's read of one sample: which requirements it meets + its decisions."""
+    """The judge's read of one sample: requirements met, decisions, and extra scope."""
 
     index: int
     requirements_met: list[str]  # requirement ids
     decisions: dict[str, str]  # dimension key -> chosen value label
+    extra_scope: list[str] = []  # features beyond the requirements (over-engineering)
+
+
+class OverEngineeringItem(BaseModel):
+    """An out-of-scope feature that showed up consistently (candidate-driven scope creep)."""
+
+    label: str
+    count: int
+    prevalence: float  # count / sample_count
 
 
 class RequirementResult(BaseModel):
@@ -113,16 +122,23 @@ class DimensionResult(BaseModel):
 
 
 class SpecScore(BaseModel):
-    """Final score (0..100) and its three-axis breakdown + actionable feedback."""
+    """Final score (0..100) and its three-axis breakdown + actionable feedback.
+
+    `base_score` is the 3-axis blend; `overengineering_penalty` is subtracted from it for
+    consistently out-of-scope features (scope discipline). `total` is the clamped result.
+    """
 
     total: float
+    base_score: float  # 3-axis blend before the penalty
     requirement_score: float  # 0..100
     decision_score: float  # 0..100
     consistency: float  # 0..100 (mean agreement, reported)
+    overengineering_penalty: float  # points subtracted (>= 0)
     grade: str  # excellent | good | fair | poor
     failed_requirements: list[str]  # texts of under-met requirements
     weak_decisions: list[str]  # "비밀번호 저장: md5 (취약)"
     diverged_decisions: list[str]  # labels of decisions the instruction left open
+    overengineered: list[str]  # "2fa (8/10)" out-of-scope features
     feedback: str
 
 
@@ -135,4 +151,5 @@ class EvaluationResult(BaseModel):
     score: SpecScore
     requirements: list[RequirementResult]
     dimensions: list[DimensionResult]
+    overengineering: list[OverEngineeringItem]
     samples: list[Sample]

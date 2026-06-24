@@ -74,13 +74,16 @@ describe("headline", () => {
       ],
       score: {
         total: 50,
+        base_score: 50,
         requirement_score: 50,
         decision_score: 50,
         consistency: 80,
+        overengineering_penalty: 0,
         grade: "fair",
         failed_requirements: ["b"],
         weak_decisions: [],
         diverged_decisions: [],
+        overengineered: [],
         feedback: "",
       },
     });

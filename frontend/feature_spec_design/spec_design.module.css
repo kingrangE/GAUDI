@@ -385,6 +385,12 @@
   color: var(--ink);
   font-weight: 700;
 }
+.penalty {
+  color: var(--wa);
+}
+.penalty b {
+  color: var(--wa);
+}
 
 /* ---- requirements checklist ---- */
 .reqList {

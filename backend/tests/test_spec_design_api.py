@@ -27,6 +27,7 @@ def _fixed_judge():
             "user_id_strategy": "uuid",
             "input_validation": "pydantic",
         },
+        "extra_scope": [],
     }
 
     class FakeJudge:
@@ -58,6 +59,9 @@ def test_evaluate_endpoint_sound_spec_scores_high():
     assert body["total_score"] == 100.0
     assert body["score"]["grade"] == "excellent"
     assert body["score"]["failed_requirements"] == []
+    assert body["score"]["overengineered"] == []
+    assert body["score"]["overengineering_penalty"] == 0.0
+    assert body["overengineering"] == []
     assert len(body["samples"]) == 10
     assert len(body["requirements"]) == 7
     assert len(body["dimensions"]) == 5
