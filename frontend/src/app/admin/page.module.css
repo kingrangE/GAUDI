@@ -219,9 +219,9 @@
 
 .trackCard {
   display: grid;
-  min-height: 260px;
+  min-height: 340px;
   align-content: space-between;
-  gap: 16px;
+  gap: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 16px;
@@ -242,6 +242,38 @@
   color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rank {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand-tint);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.miniBars {
+  padding: 6px 0;
 }
 
 .trackStats {

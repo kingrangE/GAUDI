@@ -508,6 +508,414 @@ _WEB_KANBAN_FILES: dict[str, str] = {
 }
 
 
+_CX_CHURN_RADAR_FILES: dict[str, str] = {
+    "README.md": (
+        "# cx-churn-radar\n\n"
+        "구독형 커머스 고객사의 CX 로그로 **고객 이탈 징후**를 탐지하고\n"
+        "위험 고객에 Agentic 대응을 트리거하는 서비스.\n\n"
+        "AXOps팀(데이터 파이프라인 + 이탈 스코어링 ML + "
+        "FastAPI 스코어링 API + 알림 에이전트) 운영.\n"
+        "스택: Python 3.12 / FastAPI / PostgreSQL / Airflow. "
+        "배치 주기: 일별(스코어링) + 시간별(수집).\n\n"
+        "## 구조\n\n"
+        "- `app/pipeline/` — 이벤트 수집·전처리 (`ingest.py`, `preprocess.py`)\n"
+        "- `app/scoring/`  — ML 모델 로딩·스코어 계산 (`model.py`, `scorer.py`)\n"
+        "- `app/api/`      — FastAPI 라우터·스키마 (`routes.py`, `schemas.py`)\n"
+        "- `app/pii.py`    — PII 마스킹 헬퍼 (반드시 이 모듈을 통해 처리)\n"
+        "- `app/config.py` — 환경변수 기반 설정\n"
+        "- `dags/`         — Airflow DAG (DAG ID 규칙: `{domain}_{task}_{schedule}`)\n"
+        "- `tests/`        — pytest, 인메모리 폴백 (실 DB 불필요)\n\n"
+        "## 명령\n\n"
+        "```bash\n"
+        "uv sync                          # 또는 pip install -e \".[dev]\"\n"
+        "ruff check .                     # 린트\n"
+        "pytest -q                        # 테스트 (인메모리, DB 불필요)\n"
+        "uvicorn app.main:app --reload    # 개발 서버 http://localhost:8000\n"
+        "```\n\n"
+        "## 이벤트 스키마\n\n"
+        "| 컬럼 | 설명 |\n"
+        "|---|---|\n"
+        "| `customer_token` | PII 마스킹된 고객 식별자 (`cust_xxxx`) |\n"
+        "| `event_type` | `view·cart·purchase·login·support_ticket·refund·cancel` 7가지 |\n"
+        "| `ts` | 이벤트 발생 시각 ISO 8601 (결측 가능) |\n"
+        "| `session_id` | 세션 식별자 |\n"
+        "| `metadata` | 이벤트별 부가 JSON |\n\n"
+        "## 중요 규칙\n\n"
+        "- **평문 PII 금지**: 이름·이메일·전화번호는 "
+        "`app.pii.mask_customer()` 호출 후에만 저장·응답\n"
+        "- **데이터 누수 금지**: `build_features(events, score_date)`에서 "
+        "`score_date` 이후 데이터 절대 사용 불가\n"
+        "- **실 DB 금지(테스트)**: 테스트는 반드시 인메모리 폴백(`tests/conftest.py`) 사용\n"
+        "- **모델 버저닝**: 아티팩트 파일명에 버전 포함 (`model_v{n}.pkl`), "
+        "`MODEL_PATH` 환경변수로 경로 지정\n"
+        "- **DAG 네이밍**: `{domain}_{task}_{schedule}` 형식 "
+        "(예: `churn_score_daily`, `event_ingest_hourly`)\n"
+    ),
+    "pyproject.toml": (
+        "[project]\n"
+        'name = "cx-churn-radar"\n'
+        'version = "0.3.7"\n'
+        'requires-python = ">=3.12"\n'
+        "dependencies = [\n"
+        '    "fastapi",\n'
+        '    "uvicorn[standard]",\n'
+        '    "sqlalchemy>=2.0",\n'
+        '    "psycopg[binary]",\n'
+        '    "pydantic-settings",\n'
+        '    "scikit-learn>=1.4",\n'
+        "]\n\n"
+        "[project.optional-dependencies]\n"
+        'dev = ["pytest", "httpx", "ruff"]\n\n'
+        "[tool.ruff]\n"
+        "line-length = 100\n\n"
+        "[tool.pytest.ini_options]\n"
+        'testpaths = ["tests"]\n'
+        'pythonpath = ["."]\n'
+    ),
+    ".env.example": (
+        "# Copy to .env. Never commit the real .env.\n"
+        "DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/churn\n"
+        "MODEL_PATH=models/model_v1.pkl\n"
+        "API_SECRET_KEY=replace-me\n"
+    ),
+    "app/__init__.py": '"""cx-churn-radar application package."""\n',
+    "app/config.py": (
+        '"""환경변수 기반 설정. 모든 설정은 .env에서 읽는다 — 코드에 하드코딩 금지."""\n\n'
+        "from pydantic_settings import BaseSettings, SettingsConfigDict\n\n\n"
+        "class Settings(BaseSettings):\n"
+        '    model_config = SettingsConfigDict(env_file=".env")\n\n'
+        '    database_url: str = "postgresql+psycopg://user:password@localhost:5432/churn"\n'
+        '    model_path: str = "models/model_v1.pkl"\n'
+        '    api_secret_key: str = "dev-only"\n\n\n'
+        "settings = Settings()\n"
+    ),
+    "app/pii.py": (
+        '"""PII 마스킹 헬퍼.\n\n'
+        "고객 식별자(이름·이메일·전화번호)는 이 모듈을 통해서만 처리한다.\n"
+        "평문 PII를 DB·로그·API 응답에 기록하는 것은 **금지된 경계**다.\n"
+        "다른 모듈은 직접 마스킹 로직을 구현하지 않고 반드시 이 함수를 호출한다.\n"
+        '"""\n\n'
+        "from __future__ import annotations\n\n"
+        "import hashlib\n"
+        "import re\n\n"
+        "_PHONE_RE = re.compile(r\"(\\d{2,3})-(\\d{3,4})-(\\d{4})\")\n\n\n"
+        "def mask_customer(raw_id: str) -> str:\n"
+        '    """고객 식별자를 결정론적 토큰으로 변환한다 (같은 입력 → 같은 cust_xxxx).\n\n'
+        "    평문 이름·이메일·전화번호 등 어떤 PII도 입력으로 받을 수 있다;\n"
+        "    반환값은 항상 `cust_<8hex>` 형식이라 재식별 불가.\n"
+        '    """\n'
+        "    digest = hashlib.sha256(raw_id.encode()).hexdigest()[:8]\n"
+        '    return f"cust_{digest}"\n\n\n'
+        "def mask_phone(phone: str) -> str:\n"
+        '    """010-1234-5678 → 010-****-5678 (국번+뒷자리 보존, 가운데 마스킹)."""\n'
+        '    return _PHONE_RE.sub(r"\\1-****-\\3", phone)\n\n\n'
+        "def mask_email(email: str) -> str:\n"
+        '    """user@example.com → us**@example.com."""\n'
+        "    local, _, domain = email.partition(\"@\")\n"
+        '    return f"{local[:2]}**@{domain}" if len(local) > 2 else f"**@{domain}"\n'
+    ),
+    "app/pipeline/__init__.py": '"""이벤트 수집·전처리 파이프라인."""\n',
+    "app/pipeline/ingest.py": (
+        '"""이벤트 수집 파이프라인.\n\n'
+        "처리 순서:\n"
+        "1. 스키마 드리프트 필터 — 알 수 없는 event_type 제거\n"
+        "2. 중복 이벤트 제거 — session_id + event_type + ts 기준\n"
+        "3. PII 마스킹 — customer_token은 반드시 app.pii.mask_customer() 통과 후 저장\n"
+        "   (이름·이메일·전화번호 원본은 절대 저장하지 않는다)\n"
+        '"""\n\n'
+        "from __future__ import annotations\n\n"
+        "import hashlib\n\n"
+        "from app.pii import mask_customer\n\n"
+        "EVENT_TYPES = frozenset({\n"
+        '    "view", "cart", "purchase", "login",\n'
+        '    "support_ticket", "refund", "cancel",\n'
+        "})\n\n\n"
+        "def _dedup_key(event: dict) -> str:\n"
+        '    raw = f"{event.get(\'session_id\')}|{event.get(\'event_type\')}|{event.get(\'ts\')}"\n'
+        "    return hashlib.md5(raw.encode()).hexdigest()\n\n\n"
+        "def ingest(raw_events: list[dict]) -> list[dict]:\n"
+        '    """원시 이벤트 목록을 정제하여 반환한다.\n\n'
+        "    - 알 수 없는 event_type 제거 (스키마 드리프트 내성)\n"
+        "    - 중복 이벤트 제거\n"
+        "    - customer_token PII 마스킹 적용\n"
+        "    - ts 결측(None) 허용 — preprocess 단계에서 처리\n"
+        '    """\n'
+        "    seen: set[str] = set()\n"
+        "    out: list[dict] = []\n"
+        "    for e in raw_events:\n"
+        "        if e.get(\"event_type\") not in EVENT_TYPES:\n"
+        "            continue\n"
+        "        key = _dedup_key(e)\n"
+        "        if key in seen:\n"
+        "            continue\n"
+        "        seen.add(key)\n"
+        "        out.append({\n"
+        '            "customer_token": mask_customer(e["customer_token"]),\n'
+        '            "event_type": e["event_type"],\n'
+        '            "ts": e.get("ts"),\n'
+        '            "session_id": e.get("session_id"),\n'
+        '            "metadata": e.get("metadata", {}),\n'
+        "        })\n"
+        "    return out\n"
+    ),
+    "app/pipeline/preprocess.py": (
+        '"""피처 엔지니어링.\n\n'
+        "주의: score_date 이전 데이터만 사용한다.\n"
+        "미래 데이터 유입(데이터 누수)은 모델 성능을 부풀리므로 엄격히 금지한다.\n"
+        "늦게 도착하는 이벤트(late-arriving)는 score_date 기준으로 필터링된다.\n"
+        '"""\n\n'
+        "from __future__ import annotations\n\n"
+        "from datetime import datetime\n\n\n"
+        "def build_features(events: list[dict], score_date: datetime) -> dict:\n"
+        '    """score_date 이전 이벤트로만 피처를 계산한다.\n\n'
+        "    score_date 이후 이벤트는 절대 포함하지 않는다 — 미래 데이터 누수 방지.\n"
+        "    ts가 None인 이벤트는 안전하게 제외한다.\n"
+        '    """\n'
+        "    valid = [\n"
+        "        e for e in events\n"
+        "        if e.get(\"ts\") is not None\n"
+        "        and datetime.fromisoformat(e[\"ts\"]) <= score_date\n"
+        "    ]\n"
+        "    n = len(valid)\n"
+        "    n_support = sum(1 for e in valid if e[\"event_type\"] == \"support_ticket\")\n"
+        "    n_cancel = sum(1 for e in valid if e[\"event_type\"] == \"cancel\")\n"
+        "    last_active = max(\n"
+        "        (datetime.fromisoformat(e[\"ts\"]) for e in valid), default=None\n"
+        "    )\n"
+        "    days_inactive = (score_date - last_active).days if last_active else 999\n"
+        "    return {\n"
+        '        "n_events": n,\n'
+        '        "n_support": n_support,\n'
+        '        "n_cancel": n_cancel,\n'
+        '        "days_inactive": days_inactive,\n'
+        '        "cancel_rate": round(n_cancel / n, 4) if n else 0.0,\n'
+        "    }\n"
+    ),
+    "app/scoring/__init__.py": '"""ML 모델 로딩·스코어 계산."""\n',
+    "app/scoring/model.py": (
+        '"""이탈 스코어링 ML 모델 로더.\n\n'
+        "모델 아티팩트는 MODEL_PATH 환경변수로 지정하며 파일명에 버전을 포함한다\n"
+        "(예: model_v3.pkl). 새 모델 배포 시 MODEL_PATH 값만 갱신한다.\n"
+        "로드된 모델은 프로세스 내에서 싱글톤으로 관리한다.\n"
+        '"""\n\n'
+        "from __future__ import annotations\n\n"
+        "import os\n"
+        "import pickle\n\n"
+        "_MODEL: object | None = None\n\n\n"
+        "def load_model(path: str | None = None) -> object:\n"
+        '    """MODEL_PATH(또는 path 인자)에서 pkl 아티팩트를 로드한다.\n\n'
+        "    파일명 규칙: model_v{n}.pkl (예: model_v1.pkl, model_v12.pkl).\n"
+        '    """\n'
+        "    global _MODEL\n"
+        "    resolved = path or os.environ.get(\"MODEL_PATH\", \"models/model_v1.pkl\")\n"
+        "    with open(resolved, \"rb\") as f:\n"
+        "        _MODEL = pickle.load(f)\n"
+        "    return _MODEL\n\n\n"
+        "def get_model() -> object:\n"
+        "    if _MODEL is None:\n"
+        "        raise RuntimeError("
+        "\"모델이 로드되지 않았습니다. load_model()을 먼저 호출하세요.\")\n"
+        "    return _MODEL\n"
+    ),
+    "app/scoring/scorer.py": (
+        '"""이탈 위험도 스코어 계산.\n\n'
+        "규칙 기반 베이스라인. 모델 교체 시 이 모듈의 score_churn_risk 함수만 수정한다.\n"
+        '"""\n\n'
+        "from __future__ import annotations\n\n\n"
+        "def score_churn_risk(features: dict) -> float:\n"
+        '    """가중 규칙으로 이탈 위험도를 0.0~1.0으로 반환한다.\n\n'
+        "    피처: cancel_rate, n_support, days_inactive (build_features 출력과 동일).\n"
+        '    """\n'
+        "    score = 0.0\n"
+        "    score += min(features.get(\"cancel_rate\", 0.0) * 0.6, 0.3)\n"
+        "    score += min(features.get(\"n_support\", 0) * 0.047, 0.3)\n"
+        "    if features.get(\"days_inactive\", 0) > 30:\n"
+        "        score += 0.2\n"
+        "    if features.get(\"days_inactive\", 0) > 90:\n"
+        "        score += 0.1\n"
+        "    return round(min(score, 1.0), 4)\n"
+    ),
+    "app/api/__init__.py": '"""FastAPI 라우터·스키마."""\n',
+    "app/api/schemas.py": (
+        '"""API 요청/응답 Pydantic 스키마.\n\n'
+        "응답에 평문 PII를 포함하지 않는다. customer_token(cust_xxxx 형태)만 사용.\n"
+        '"""\n\n'
+        "from pydantic import BaseModel\n\n\n"
+        "class ScoreRequest(BaseModel):\n"
+        "    customer_token: str  # cust_xxxx 형태 — 평문 이름/이메일 금지\n"
+        "    score_date: str      # ISO 8601\n\n\n"
+        "class ScoreResponse(BaseModel):\n"
+        "    customer_token: str\n"
+        "    churn_risk: float    # 0.0~1.0\n"
+        "    scored_at: str       # ISO 8601\n"
+    ),
+    "app/api/routes.py": (
+        '"""FastAPI 라우터: 이탈 스코어링 엔드포인트."""\n\n'
+        "from datetime import datetime, timezone\n\n"
+        "from fastapi import APIRouter, HTTPException\n\n"
+        "from app.api.schemas import ScoreRequest, ScoreResponse\n"
+        "from app.scoring.scorer import score_churn_risk\n\n"
+        'router = APIRouter(prefix="/scores", tags=["scores"])\n\n\n'
+        '@router.post("", response_model=ScoreResponse, status_code=201)\n'
+        "def create_score(req: ScoreRequest) -> ScoreResponse:\n"
+        "    try:\n"
+        "        datetime.fromisoformat(req.score_date)\n"
+        "    except ValueError:\n"
+        "        raise HTTPException("
+        'status_code=400, detail="score_date는 ISO 8601 형식이어야 합니다.")\n'
+        "    features = {\"cancel_rate\": 0.0, \"n_support\": 0, \"days_inactive\": 0}\n"
+        "    risk = score_churn_risk(features)\n"
+        "    return ScoreResponse(\n"
+        "        customer_token=req.customer_token,\n"
+        "        churn_risk=risk,\n"
+        "        scored_at=datetime.now(timezone.utc).isoformat(),\n"
+        "    )\n"
+    ),
+    "app/main.py": (
+        '"""FastAPI 앱 진입점."""\n\n'
+        "from fastapi import FastAPI\n\n"
+        "from app.api.routes import router\n\n"
+        'app = FastAPI(title="cx-churn-radar")\n'
+        "app.include_router(router)\n\n\n"
+        '@app.get("/health")\n'
+        "def health() -> dict[str, str]:\n"
+        '    return {"status": "ok"}\n'
+    ),
+    "dags/__init__.py": '"""Airflow DAG 모음. DAG ID 규칙: {domain}_{task}_{schedule}."""\n',
+    "dags/churn_score_daily_dag.py": (
+        '"""DAG: churn_score_daily\n\n'
+        "DAG ID 규칙: {domain}_{task}_{schedule}\n"
+        "  domain   = churn\n"
+        "  task     = score\n"
+        "  schedule = daily\n\n"
+        "매일 자정(KST) 전체 고객의 이탈 스코어를 갱신한다.\n"
+        "score_date = 전날 자정 (미래 데이터 누수 방지용 경계값).\n"
+        '"""\n\n'
+        "from datetime import datetime, timedelta\n\n"
+        "DAG_ID = \"churn_score_daily\"\n\n"
+        "default_args = {\n"
+        '    "owner": "axops",\n'
+        '    "retries": 2,\n'
+        "    \"retry_delay\": timedelta(minutes=5),\n"
+        "}\n\n"
+        "# dag = DAG(\n"
+        "#     dag_id=DAG_ID,\n"
+        '#     schedule_interval="0 15 * * *",  # 자정 KST\n'
+        "#     start_date=datetime(2024, 3, 1),\n"
+        "#     catchup=False,\n"
+        '#     tags=["churn", "scoring"],\n'
+        "# )\n"
+    ),
+    "dags/event_ingest_hourly_dag.py": (
+        '"""DAG: event_ingest_hourly\n\n'
+        "DAG ID 규칙: {domain}_{task}_{schedule}\n"
+        "  domain   = event\n"
+        "  task     = ingest\n"
+        "  schedule = hourly\n\n"
+        "CX 로그 소스에서 이벤트를 수집하고 인제스트 파이프라인을 실행한다.\n"
+        "늦게 도착하는 이벤트(late-arriving) 처리 포함.\n"
+        '"""\n\n'
+        "DAG_ID = \"event_ingest_hourly\"\n"
+    ),
+    "tests/__init__.py": '"""cx-churn-radar 테스트 스위트."""\n',
+    "tests/conftest.py": (
+        '"""공유 픽스처.\n\n'
+        "실제 PostgreSQL 없이 인메모리로 테스트한다.\n"
+        "DATABASE_URL=sqlite:///:memory: 로 오버라이드하여 모든 DB 접근을 인메모리로 처리한다.\n"
+        "절대로 테스트에서 실제 PostgreSQL 컨테이너를 기동하지 않는다.\n"
+        '"""\n\n'
+        "import os\n\n"
+        "import pytest\n\n"
+        'os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")\n'
+        'os.environ.setdefault("MODEL_PATH", "tests/fixtures/model_v1.pkl")\n\n\n'
+        "@pytest.fixture\n"
+        "def sample_events() -> list[dict]:\n"
+        '    """현실적인 더러운 이벤트 샘플 (중복·결측 ts 포함)."""\n'
+        "    return [\n"
+        "        {\"customer_token\": \"user_7f3a1b\", \"event_type\": \"view\",\n"
+        '         "ts": "2024-03-11T09:23:47", "session_id": "s_a91c", "metadata": {}},\n'
+        "        {\"customer_token\": \"user_7f3a1b\", \"event_type\": \"cart\",\n"
+        '         "ts": "2024-03-11T09:31:08", "session_id": "s_a91c", "metadata": {}},\n'
+        "        {\"customer_token\": \"user_7f3a1b\", \"event_type\": \"cancel\",\n"
+        '         "ts": "2024-03-13T14:17:33", "session_id": "s_b02d", "metadata": {}},\n'
+        "        {\"customer_token\": \"user_c82e4d\", \"event_type\": \"support_ticket\",\n"
+        '         "ts": "2024-03-12T07:52:19", "session_id": "s_c13f",\n'
+        '         "metadata": {"issue": "결제 오류 코드 E-2291"}},\n'
+        "        # 중복 이벤트 (실제 파이프라인에서 발생하는 at-least-once 딜리버리)\n"
+        "        {\"customer_token\": \"user_c82e4d\", \"event_type\": \"support_ticket\",\n"
+        '         "ts": "2024-03-12T07:52:19", "session_id": "s_c13f",\n'
+        '         "metadata": {"issue": "결제 오류 코드 E-2291"}},\n'
+        "        # ts 결측 (센서 오류)\n"
+        "        {\"customer_token\": \"user_9a4c7e\", \"event_type\": \"login\",\n"
+        '         "ts": None, "session_id": "s_d24g", "metadata": {}},\n'
+        "    ]\n"
+    ),
+    "tests/test_ingest.py": (
+        '"""수집 파이프라인 단위 테스트 — 인메모리, DB 불필요."""\n\n'
+        "from app.pipeline.ingest import EVENT_TYPES, ingest\n"
+        "from app.pii import mask_customer, mask_phone\n\n\n"
+        "def test_dedup_removes_exact_duplicates(sample_events):\n"
+        "    result = ingest(sample_events)\n"
+        "    tickets = [e for e in result if e[\"event_type\"] == \"support_ticket\"]\n"
+        "    assert len(tickets) == 1\n\n\n"
+        "def test_pii_tokenized_in_output(sample_events):\n"
+        "    result = ingest(sample_events)\n"
+        "    for e in result:\n"
+        '        assert e["customer_token"].startswith("cust_"), e["customer_token"]\n'
+        '        assert "user_" not in e["customer_token"]\n\n\n'
+        "def test_null_ts_preserved(sample_events):\n"
+        "    result = ingest(sample_events)\n"
+        '    null_events = [e for e in result if e["ts"] is None]\n'
+        "    assert len(null_events) == 1\n\n\n"
+        "def test_unknown_event_type_filtered():\n"
+        '    events = [{"customer_token": "u1", "event_type": "click", "ts": "2024-01-01", '
+        '"session_id": "s1", "metadata": {}}]\n'
+        "    assert ingest(events) == []\n\n\n"
+        "def test_mask_phone_partial():\n"
+        '    assert mask_phone("010-1234-5678") == "010-****-5678"\n'
+        '    assert mask_phone("02-999-1234") == "02-****-1234"\n\n\n'
+        "def test_mask_customer_deterministic():\n"
+        '    t1 = mask_customer("user@example.com")\n'
+        '    t2 = mask_customer("user@example.com")\n'
+        "    assert t1 == t2\n"
+        '    assert t1 != mask_customer("other@example.com")\n'
+        '    assert t1.startswith("cust_")\n'
+    ),
+    "tests/test_scoring.py": (
+        '"""스코어링·전처리 단위 테스트 — 인메모리, DB 불필요."""\n\n'
+        "from datetime import datetime\n\n"
+        "from app.pipeline.preprocess import build_features\n"
+        "from app.scoring.scorer import score_churn_risk\n\n\n"
+        "def test_high_risk_features_score_above_threshold():\n"
+        "    features = {\"cancel_rate\": 0.47, \"n_support\": 6, \"days_inactive\": 53}\n"
+        "    assert score_churn_risk(features) >= 0.6\n\n\n"
+        "def test_active_customer_scores_below_threshold():\n"
+        "    features = {\"cancel_rate\": 0.0, \"n_support\": 0, \"days_inactive\": 3}\n"
+        "    assert score_churn_risk(features) < 0.15\n\n\n"
+        "def test_score_bounded_0_to_1():\n"
+        "    features = {\"cancel_rate\": 1.0, \"n_support\": 99, \"days_inactive\": 999}\n"
+        "    assert 0.0 <= score_churn_risk(features) <= 1.0\n\n\n"
+        "def test_future_events_excluded_by_score_date():\n"
+        "    score_date = datetime(2024, 3, 17, 0, 0, 0)\n"
+        "    events = [\n"
+        "        {\"customer_token\": \"cust_ab3c\", \"event_type\": \"cancel\",\n"
+        '         "ts": "2024-03-16T22:41:07", "session_id": "s1", "metadata": {}},\n'
+        "        {\"customer_token\": \"cust_ab3c\", \"event_type\": \"purchase\",\n"
+        '         "ts": "2024-03-18T08:13:52", "session_id": "s2", "metadata": {}},\n'
+        "    ]\n"
+        "    features = build_features(events, score_date)\n"
+        "    assert features[\"n_events\"] == 1  # 미래 이벤트 제외\n"
+        "    assert features[\"n_cancel\"] == 1\n\n\n"
+        "def test_null_ts_events_excluded():\n"
+        "    score_date = datetime(2024, 3, 17)\n"
+        "    events = [{\"customer_token\": \"cust_xy9z\", \"event_type\": \"view\",\n"
+        '              "ts": None, "session_id": "s3", "metadata": {}}]\n'
+        "    features = build_features(events, score_date)\n"
+        "    assert features[\"n_events\"] == 0\n"
+    ),
+}
+
+
 _PROJECTS: dict[str, Project] = {
     "todo-api": Project(
         id="todo-api",
@@ -539,6 +947,20 @@ _PROJECTS: dict[str, Project] = {
             "에이전트가 이 프로젝트에서 효율적으로 작업하도록 CLAUDE.md를 작성하세요."
         ),
         files=_build_files(_WEB_KANBAN_FILES),
+    ),
+    "cx-churn-radar": Project(
+        id="cx-churn-radar",
+        title="cx-churn-radar (FastAPI · ML 파이프라인 · AXOps)",
+        brief=(
+            "구독형 커머스 고객사의 CX 로그로 고객 이탈 징후를 탐지하고 "
+            "위험 고객에 Agentic 대응을 트리거하는 서비스. "
+            "AXOps팀이 운영하며 데이터 파이프라인(수집·전처리)·이탈 스코어링 ML·"
+            "FastAPI 스코어링 API·Airflow DAG로 구성된다. "
+            "PII 마스킹·인메모리 테스트 폴백·DAG 네이밍 컨벤션·모델 버저닝 등 "
+            "팀 내 암묵적 규약이 코드 전반에 내재돼 있다. "
+            "이 레포에서 에이전트가 효율적으로 일하도록 CLAUDE.md를 작성하라."
+        ),
+        files=_build_files(_CX_CHURN_RADAR_FILES),
     ),
 }
 

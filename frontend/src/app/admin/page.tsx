@@ -2,19 +2,56 @@ import { CheckCircle2, Clock, Gauge } from "lucide-react";
 import Link from "next/link";
 
 import { AdminShell } from "@/components/admin/AdminShell";
+import { CandidateStepBars, type StepScore } from "@/components/admin/CandidateStepBars";
+import { Badge } from "@/components/ui";
 import { USER_CODES } from "@/lib/accessCodes";
-import { fetchCandidates, formatScore, formatTime, statusLabel } from "@/lib/adminApi";
+import {
+  EXAM_FLOW,
+  MINI_STEP_LABELS,
+  fetchCandidates,
+  fetchExamResult,
+  formatElapsed,
+  formatScore,
+  statusLabel,
+  type AttemptStatus,
+  type FeatureResult,
+} from "@/lib/adminApi";
 
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 
+function statusBadgeTone(status: AttemptStatus | undefined): "good" | "warn" | "bad" | "neutral" {
+  switch (status) {
+    case "completed":
+      return "good";
+    case "in_progress":
+      return "warn";
+    case "failed":
+      return "bad";
+    default:
+      return "neutral";
+  }
+}
+
 export default async function AdminPage() {
   const candidates = await fetchCandidates();
 
-  const completed = candidates.filter(
-    (c) => c.latest_attempt?.status === "completed",
+  // Fetch full details (features) for all candidates that have an attempt.
+  const candidatesWithAttempts = candidates.filter((c) => c.latest_attempt !== null);
+  const details = await Promise.all(
+    candidatesWithAttempts.map((c) => fetchExamResult(c.latest_attempt!.id)),
   );
+
+  // Build lookup: attemptId → FeatureResult[]
+  const featureMap = new Map<string, FeatureResult[]>();
+  for (let i = 0; i < candidatesWithAttempts.length; i++) {
+    const detail = details[i];
+    if (detail) featureMap.set(detail.id, detail.features);
+  }
+
+  // Summary metrics
+  const completed = candidates.filter((c) => c.latest_attempt?.status === "completed");
   const scores = completed
     .map((c) => c.latest_attempt?.overall_normalized)
     .filter((s): s is number => typeof s === "number");
@@ -49,8 +86,16 @@ export default async function AdminPage() {
     },
   ];
 
+  // Sort candidates by overall score descending for ranking.
+  const rankedCandidates = [...candidates].sort((a, b) => {
+    const sa = a.latest_attempt?.overall_normalized ?? -1;
+    const sb = b.latest_attempt?.overall_normalized ?? -1;
+    return sb - sa;
+  });
+
   return (
     <AdminShell active="dashboard" eyebrow="모의고사 운영" title="모의고사 결과 대시보드">
+      {/* Entry codes panel */}
       <section className={styles.codePanel} aria-labelledby="entry-codes-title">
         <div className={styles.panelHeaderCompact}>
           <div>
@@ -71,6 +116,7 @@ export default async function AdminPage() {
         </ul>
       </section>
 
+      {/* Summary metrics */}
       <section className={styles.metricGrid} aria-label="모의고사 지표">
         {metrics.map((metric) => (
           <article className={styles.metric} key={metric.id}>
@@ -84,42 +130,70 @@ export default async function AdminPage() {
         ))}
       </section>
 
+      {/* Candidate comparison grid */}
       <section className={styles.panel} aria-labelledby="candidates-title">
         <div className={styles.panelHeader}>
           <div>
-            <p className={styles.eyebrow}>응시자</p>
+            <p className={styles.eyebrow}>응시자 비교</p>
             <h2 id="candidates-title">응시자별 모의고사 현황</h2>
           </div>
         </div>
 
         <div className={styles.trackGrid}>
-          {candidates.map((candidate) => {
+          {rankedCandidates.map((candidate, idx) => {
             const attempt = candidate.latest_attempt;
-            const statusTone =
-              attempt?.status === "completed" ? styles.done : styles.pending;
+            const features = attempt ? (featureMap.get(attempt.id) ?? []) : [];
+
+            // Build 5-step scores in exam-flow order.
+            const steps: StepScore[] = EXAM_FLOW.map((key) => ({
+              key,
+              label: MINI_STEP_LABELS[key],
+              score: features.find((f) => f.feature_key === key)?.normalized_score ?? null,
+            }));
+
             return (
               <article className={styles.trackCard} key={candidate.code}>
-                <div>
-                  <p className={styles.eyebrow}>{candidate.code}</p>
-                  <h3>{candidate.label}</h3>
-                  <span className={`${styles.status} ${statusTone}`}>
+                {/* Card header: rank + code + status */}
+                <div className={styles.cardHeader}>
+                  <div>
+                    <div className={styles.cardMeta}>
+                      {attempt && (
+                        <span className={styles.rank} aria-label={`순위 ${idx + 1}`}>
+                          {idx + 1}
+                        </span>
+                      )}
+                      <p className={styles.eyebrow}>{candidate.code}</p>
+                    </div>
+                    <h3>{candidate.label}</h3>
+                  </div>
+                  <Badge tone={statusBadgeTone(attempt?.status)}>
                     {attempt ? statusLabel(attempt.status) : "미응시"}
-                  </span>
+                  </Badge>
                 </div>
+
+                {/* 5-step mini score bars */}
+                <CandidateStepBars steps={steps} className={styles.miniBars} />
+
+                {/* Bottom stats: overall + elapsed + feature count */}
                 <div className={styles.trackStats}>
                   <div>
                     <span>종합</span>
                     <strong>{formatScore(attempt?.overall_normalized ?? null)}</strong>
                   </div>
                   <div>
-                    <span>완료</span>
-                    <strong>{formatTime(attempt?.completed_at ?? null)}</strong>
+                    <span>소요시간</span>
+                    <strong>
+                      {attempt
+                        ? formatElapsed(attempt.started_at, attempt.completed_at)
+                        : "—"}
+                    </strong>
                   </div>
                   <div>
-                    <span>기능</span>
+                    <span>기능 수</span>
                     <strong>{attempt?.feature_count ?? 0}</strong>
                   </div>
                 </div>
+
                 {attempt ? (
                   <Link className={styles.linkButton} href={`/admin/results/${attempt.id}`}>
                     리포트 보기

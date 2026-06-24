@@ -9,11 +9,11 @@ async def _create_session(client, name="길원"):
     return resp.json()
 
 
-async def test_create_session_returns_six_problems_without_ground_truth(client):
+async def test_create_session_returns_seven_problems_without_ground_truth(client):
     data = await _create_session(client)
     assert data["session_id"]
     assert data["candidate_name"] == "길원"
-    assert len(data["problems"]) == 6
+    assert len(data["problems"]) == 7
     for p in data["problems"]:
         assert p["spec"] and p["difficulty"]
         # provided basic tests are shown as a starting point

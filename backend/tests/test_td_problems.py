@@ -21,9 +21,9 @@ _CATEGORIES = {
 }
 
 
-def test_there_are_six_problems():
-    assert PROBLEM_COUNT == 6
-    assert len(PROBLEMS) == 6
+def test_there_are_seven_problems():
+    assert PROBLEM_COUNT == 7
+    assert len(PROBLEMS) == 7
 
 
 def test_problem_ids_unique():
@@ -31,9 +31,11 @@ def test_problem_ids_unique():
     assert len(set(ids)) == len(ids)
 
 
-def test_two_problems_per_difficulty_tier():
+def test_difficulty_tier_counts():
     counts = {d: sum(1 for p in PROBLEMS if p.difficulty == d) for d in _DIFFICULTIES}
-    assert counts == {"easy": 2, "medium": 2, "hard": 2}
+    assert counts["easy"] == 2
+    assert counts["medium"] == 2
+    assert counts["hard"] == 3
 
 
 def test_each_problem_well_formed():

@@ -100,10 +100,53 @@ browser (useState).
 - Mutate state only via the `useBoard` hook.
 """
 
+_CX_CHURN_RADAR_GOLD = """\
+# cx-churn-radar
+
+구독형 커머스 고객사의 CX 이벤트 로그로 고객 이탈 위험을 스코어링하고 위험 고객에 대응을
+트리거하는 서비스. 데이터 파이프라인 + 이탈 스코어링(ML) + FastAPI 스코어링 API + 알림.
+Postgres(운영), 테스트는 인메모리. 배치는 Airflow DAG.
+
+## Commands
+- 설정: `cp .env.example .env` 후 `DATABASE_URL`(과 `MODEL_PATH`) 지정
+- 설치: `make install`
+- Dev: `make dev` -> http://localhost:8000 (docs at /docs)
+- Test: `make test` (pytest)
+- Lint: `make lint` (ruff)
+
+## Structure
+- `app/main.py` — 앱 + 라우터 와이어링 + `/health`
+- `app/pipeline/` — 데이터 파이프라인: `ingest.py`(수집·중복 제거·PII 마스킹), `preprocess.py`
+  (`build_features(events, score_date)` — 피처 생성)
+- `app/scoring/` — `model.py`(`load_model()`), `scorer.py`(이탈 점수 산출)
+- `app/api/` — `schemas.py`(Pydantic), `routes.py`(스코어링 엔드포인트)
+- `app/pii.py` — PII 마스킹 모듈(`mask_customer` / `mask_phone` / `mask_email`)
+- `dags/` — 배치 DAG (`churn_score_daily_dag.py`, `event_ingest_hourly_dag.py`)
+- `tests/` — 인메모리 테스트(`conftest.py`)
+
+## Conventions
+- **PII 마스킹**: 고객 식별자·전화·이메일은 항상 `app/pii.py`로 마스킹한 값만 저장/응답한다.
+  원본 PII는 로그·응답·DB 어디에도 평문으로 남기지 않는다(같은 고객 = 같은 토큰, 일관 토큰화).
+- **인메모리 테스트**: 테스트는 `conftest.py`가 `DATABASE_URL=sqlite:///:memory:`로 오버라이드한다 —
+  실제 Postgres를 띄우지 않는다.
+- **DAG 네이밍**: `DAG_ID`는 파일 stem과 일치(예: `churn_score_daily`, `event_ingest_hourly`).
+- **모델 버저닝**: 모델 아티팩트는 `MODEL_PATH` 환경변수로 지정하고 파일명에 버전을 포함한다
+  (예: `model_v3.pkl`). 새 모델 배포 시 `MODEL_PATH`만 갱신한다.
+- **이벤트 스키마**: 허용 이벤트는 `EVENT_TYPES` frozenset으로 제한하고,
+  ingest에서 검증·중복 제거한다.
+
+## Boundaries
+- **데이터 누수 금지**: `build_features`는 `score_date` 이후(미래) 이벤트를 피처에 쓰지 않는다.
+- **평문 PII 금지**: 원본 고객 식별자/전화/이메일을 로그·응답에 노출하지 않는다 — 항상 마스킹 먼저.
+- **테스트에서 실 DB 금지**: 테스트는 인메모리만 사용하며 Postgres 기동을 요구하지 않는다.
+- `.env`·시크릿·모델 아티팩트는 절대 커밋하지 않는다.
+"""
+
 _GOLD: dict[str, str] = {
     "todo-api": _TODO_API_GOLD,
     "board-api": _BOARD_API_GOLD,
     "web-kanban": _WEB_KANBAN_GOLD,
+    "cx-churn-radar": _CX_CHURN_RADAR_GOLD,
 }
 
 
