@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 import app.features.coding_test.models  # noqa: F401  (register tables on Base)
+import app.features.cs_eval.models  # noqa: F401  (register tables on Base)
 import app.features.rejection_eval.models  # noqa: F401  (register tables on Base)
 from app.db.base import Base
 from app.db.session import get_session
