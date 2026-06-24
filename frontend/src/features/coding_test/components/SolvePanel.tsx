@@ -48,7 +48,7 @@ export function SolvePanel({ problemId }: { problemId: string }) {
         ← 문제 목록
       </Link>
 
-      <div className="grid gap-4 lg:h-[calc(100vh-9.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid h-[calc(100vh-9.5rem)] grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
         {/* Left — problem */}
         <Panel className="min-h-0 overflow-hidden">
           <ProblemPane problem={problemQuery.data} timerSeconds={TIMER_SECONDS} />

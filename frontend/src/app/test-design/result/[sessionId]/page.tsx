@@ -28,7 +28,7 @@ export default function ResultPage({ params }: { params: { sessionId: string } }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-3xl space-y-3">
+      <div className="space-y-3">
         <p className="text-bad-600">{error}</p>
         <Link href="/test-design" className="text-sm font-medium text-brand-600 hover:text-brand-700">
           다시 시도 →
@@ -42,7 +42,7 @@ export default function ResultPage({ params }: { params: { sessionId: string } }
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="space-y-5">
       <h1 className="text-2xl font-bold text-slate-900">평가 결과</h1>
       <ResultSummary result={result} />
       {result.problems.map((problem) => (

@@ -64,7 +64,7 @@ export default function TestDesignPage() {
   // -- Start screen ----------------------------------------------------------
   if (!sessionId) {
     return (
-      <div className="mx-auto max-w-xl py-8">
+      <div className="py-8">
         <p className="text-sm font-semibold text-brand-600">테스트 설계</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">테스트 설계 평가</h1>
         <p className="mt-2 text-slate-600">
@@ -82,7 +82,7 @@ export default function TestDesignPage() {
             placeholder="응시자 이름"
             aria-label="응시자 이름"
             onChange={(e) => setName(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            className="mt-2 w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           <div className="mt-4">
             <Button disabled={busy || name.trim().length === 0} onClick={start}>
@@ -108,7 +108,7 @@ export default function TestDesignPage() {
       </div>
       <ProgressBar current={index + 1} total={problems.length} />
 
-      <div className="grid gap-4 lg:h-[calc(100vh-12rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid h-[calc(100vh-12rem)] grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
         {/* Left — problem brief */}
         <Panel className="min-h-0 overflow-y-auto">
           <ProblemView problem={problem} />

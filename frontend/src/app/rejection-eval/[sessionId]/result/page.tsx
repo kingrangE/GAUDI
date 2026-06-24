@@ -47,7 +47,7 @@ export default function ResultPage() {
   if (!result) return <p className="text-slate-500">결과를 불러오는 중…</p>;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">거부 능력 평가 결과</h1>
         <p className="mt-1 text-slate-600">

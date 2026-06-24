@@ -31,7 +31,7 @@ export default function StartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl py-8">
+    <div className="py-8">
       <p className="text-sm font-semibold text-brand-600">거부 능력</p>
       <h1 className="mt-1 text-2xl font-bold text-slate-900">거부 능력 평가</h1>
       <p className="mt-2 text-slate-600">
@@ -48,7 +48,7 @@ export default function StartPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="이름을 입력하세요"
-          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          className="mt-2 w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         />
         <div className="mt-4">
           <Button onClick={start} disabled={loading || !name.trim()}>

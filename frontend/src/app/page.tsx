@@ -23,8 +23,8 @@ const FEATURES = [
 
 export default function HomePage() {
   return (
-    <div className="mx-auto max-w-5xl py-10">
-      <section className="max-w-2xl">
+    <div className="py-10">
+      <section>
         <p className="text-sm font-semibold text-brand-600">AI SW 해커톤 · and you</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
           AI Agent를 다루고 검증하는 역량을 평가합니다
@@ -35,7 +35,7 @@ export default function HomePage() {
         </p>
       </section>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-3 gap-4">
         {FEATURES.map((f) => (
           <Link
             key={f.href}

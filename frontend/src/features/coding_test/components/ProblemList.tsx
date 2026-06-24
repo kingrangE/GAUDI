@@ -20,7 +20,7 @@ export function ProblemList() {
   if (isError || !data) return <p className="text-bad-600">문제를 불러오지 못했습니다.</p>;
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2">
+    <ul className="grid grid-cols-3 gap-3">
       {data.map((problem) => (
         <li key={problem.id}>
           <Link
