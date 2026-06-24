@@ -13,9 +13,9 @@ const ENTRIES = [
     href: "/user/exam",
     badge: "실전 모의고사",
     title: "실전 모의고사",
-    desc: "여러 평가를 묶어 실제 시험처럼 진행하는 모드입니다. 곧 제공됩니다.",
-    cta: "준비 중",
-    ready: false,
+    desc: "5개 평가를 하나의 실제 과제처럼 순서대로 진행합니다. 점수는 종료 후 관리자가 확인합니다.",
+    cta: "시험 시작 →",
+    ready: true,
   },
 ];
 

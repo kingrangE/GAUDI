@@ -9,9 +9,11 @@ interface ContextPaneProps {
   onSubmit: (claudeMd: string) => void;
   status: SubmitStatus;
   report: EvaluationReport | null;
+  /** When true: hides the score report and grading note; shows "제출 중…" while submitting. */
+  examMode?: boolean;
 }
 
-export function ContextPane({ onSubmit, status, report }: ContextPaneProps) {
+export function ContextPane({ onSubmit, status, report, examMode }: ContextPaneProps) {
   const [draft, setDraft] = useState("");
   const canSubmit = draft.trim().length > 0 && status !== "submitting";
 
@@ -38,14 +40,14 @@ export function ContextPane({ onSubmit, status, report }: ContextPaneProps) {
         disabled={status === "submitting"}
       />
       <button className={styles.submit} onClick={submit} disabled={!canSubmit}>
-        {status === "submitting" ? "채점 중…" : "제출"}
+        {status === "submitting" ? (examMode ? "제출 중…" : "채점 중…") : "제출"}
       </button>
 
       {status === "error" ? (
         <div className={styles.error}>제출에 실패했습니다. 백엔드 연결을 확인하세요.</div>
       ) : null}
 
-      {report ? (
+      {!examMode && report ? (
         <div className={styles.report} aria-label="평가 결과">
           <div className={styles.scoreRow}>
             <span className={styles.scoreBig}>{report.total}</span>
@@ -77,10 +79,12 @@ export function ContextPane({ onSubmit, status, report }: ContextPaneProps) {
         </div>
       ) : null}
 
-      <p className={styles.note}>
-        채점은 제출한 CLAUDE.md를 이 프로젝트의 ground-truth 체크리스트에 대고 LLM이 항목별로
-        판정합니다(포함된 근거를 문서에서 인용). 표현·구조는 자유입니다.
-      </p>
+      {!examMode ? (
+        <p className={styles.note}>
+          채점은 제출한 CLAUDE.md를 이 프로젝트의 ground-truth 체크리스트에 대고 LLM이 항목별로
+          판정합니다(포함된 근거를 문서에서 인용). 표현·구조는 자유입니다.
+        </p>
+      ) : null}
     </section>
   );
 }

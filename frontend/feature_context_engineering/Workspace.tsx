@@ -13,6 +13,10 @@ interface WorkspaceProps {
   projectId: string;
   // Provided by the server on assembly; otherwise the client fetches it.
   initialProject?: Project;
+  /** When true: locks to projectId, hides the picker, and routes submit through onExamSubmit. */
+  examMode?: boolean;
+  /** Called instead of the internal grading submit when examMode is true. */
+  onExamSubmit?: (claudeMd: string) => Promise<void>;
 }
 
 /** Default file shown before the user picks one (prefer README, else the first file). */
@@ -24,7 +28,7 @@ function firstFile(project: Project): ViewFile | null {
   );
 }
 
-export function Workspace({ projectId, initialProject }: WorkspaceProps) {
+export function Workspace({ projectId, initialProject, examMode, onExamSubmit }: WorkspaceProps) {
   const [currentId, setCurrentId] = useState(projectId);
   const [project, setProject] = useState<Project | null>(initialProject ?? null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -34,8 +38,9 @@ export function Workspace({ projectId, initialProject }: WorkspaceProps) {
   const [submitted, setSubmitted] = useState(0);
   const [loadError, setLoadError] = useState(false);
 
-  // Load the project list for the picker (best effort).
+  // Load the project list for the picker (best effort). Skipped in exam mode.
   useEffect(() => {
+    if (examMode) return;
     let active = true;
     fetchProjects()
       .then((list) => {
@@ -47,7 +52,7 @@ export function Workspace({ projectId, initialProject }: WorkspaceProps) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [examMode]);
 
   // Load the selected project (skip if the initial one was supplied).
   useEffect(() => {
@@ -91,8 +96,12 @@ export function Workspace({ projectId, initialProject }: WorkspaceProps) {
     setStatus("submitting");
     setReport(null);
     try {
-      const result = await submitClaudeMd({ project_id: project.id, claude_md: claudeMd });
-      setReport(result);
+      if (examMode && onExamSubmit) {
+        await onExamSubmit(claudeMd);
+      } else {
+        const result = await submitClaudeMd({ project_id: project.id, claude_md: claudeMd });
+        setReport(result);
+      }
       setStatus("done");
       setSubmitted((n) => n + 1);
     } catch {
@@ -115,7 +124,7 @@ export function Workspace({ projectId, initialProject }: WorkspaceProps) {
       <header className={styles.topbar}>
         <span className={styles.brand}>and·you</span>
         <span className={styles.feature}>CONTEXT ENGINEERING</span>
-        {projects.length > 1 ? (
+        {!examMode && projects.length > 1 ? (
           <select
             className={styles.picker}
             aria-label="프로젝트 선택"
@@ -139,7 +148,7 @@ export function Workspace({ projectId, initialProject }: WorkspaceProps) {
           onSelect={(node) => setSelected(node)}
         />
         <FileWell file={shown} />
-        <ContextPane onSubmit={handleSubmit} status={status} report={report} />
+        <ContextPane onSubmit={handleSubmit} status={status} report={report} examMode={examMode} />
       </main>
     </div>
   );

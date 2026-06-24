@@ -54,6 +54,15 @@
   grid-template-columns: minmax(340px, 0.95fr) minmax(0, 1.05fr);
   min-height: 0;
 }
+
+/* exam mode: single pane, no results column */
+.splitExam {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(340px, 680px);
+  min-height: 0;
+  justify-content: center;
+}
 .pane {
   min-height: 0;
   overflow: auto;

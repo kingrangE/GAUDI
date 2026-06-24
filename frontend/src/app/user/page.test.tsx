@@ -14,10 +14,10 @@ describe("UserHubPage", () => {
     expect(exam).toHaveAttribute("href", "/user/exam");
   });
 
-  it("marks 실전 모의고사 as not yet ready", () => {
+  it("marks 실전 모의고사 as ready to start", () => {
     render(<UserHubPage />);
     const exam = screen.getByRole("link", { name: /실전 모의고사/ });
-    expect(exam).toHaveAttribute("aria-disabled", "true");
-    expect(exam).toHaveTextContent("준비 중");
+    expect(exam).toHaveAttribute("aria-disabled", "false");
+    expect(exam).toHaveTextContent("시험 시작");
   });
 });

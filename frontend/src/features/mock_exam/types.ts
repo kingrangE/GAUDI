@@ -19,7 +19,7 @@ export interface AttemptStatus {
   completed_steps: string[];
   current_step: string | null;
   remaining_seconds: number;
-  status: "in_progress" | "finished";
+  status: "in_progress" | "finished" | "completed";
 }
 
 export interface RejectionItem {
