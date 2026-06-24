@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const NAV = [
   { href: "/coding-test", label: "코딩 테스트" },
+  { href: "/cs-eval", label: "CS 심층 평가" },
   { href: "/rejection-eval", label: "거부 능력 평가" },
   { href: "/test-design", label: "테스트 설계 평가" },
   { href: "/dev-prompting", label: "개발 프롬프팅" },
@@ -10,6 +14,14 @@ const NAV = [
 
 /** Light "judge console" top bar + page container used on every route. */
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
+  // The entry-code gate (`/`) is a clean full-screen screen — no nav chrome that
+  // would let a visitor bypass the gate.
+  if (pathname === "/") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">

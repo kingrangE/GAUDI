@@ -25,6 +25,9 @@ class JudgeOutput(BaseModel):
     matches: list[JudgeMatch]
     # indices of submitted flaws that match no real flaw (hallucinated / wrong).
     false_positive_indices: list[int] = Field(default_factory=list)
+    # indices of submitted items that merely restate a provided basic test —
+    # neither a match nor a false positive (scored neutrally).
+    already_covered_indices: list[int] = Field(default_factory=list)
     report: str
 
 
@@ -41,13 +44,19 @@ class CreateSessionRequest(BaseModel):
 
 
 class ProblemPublic(BaseModel):
-    """A problem as shown to the candidate — the flaw list is hidden."""
+    """A problem as shown to the candidate — the answer set is hidden.
+
+    ``spec`` is the prose scenario (service + feature + tech + how it's built);
+    there is no code to review. ``difficulty`` is one of easy/medium/hard.
+    """
 
     index: int
     id: str
     title: str
+    difficulty: str
     spec: str
-    code: str
+    # Basic tests assumed already implemented — shown as a starting point.
+    provided_tests: list[str]
 
 
 class CreateSessionResponse(BaseModel):
@@ -83,6 +92,8 @@ class ResultProblem(BaseModel):
     problem_index: int
     problem_id: str
     title: str
+    difficulty: str
+    provided_tests: list[str]
     candidate_flaws: list[str]
     flaws: list[ResultFlaw]
     false_positives: list[str]

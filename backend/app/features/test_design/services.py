@@ -28,9 +28,16 @@ class SessionNotFound(Exception):
 
 
 def public_problems() -> list[ProblemPublic]:
-    """The five problems as shown to candidates — flaw lists are never included."""
+    """The problems as shown to candidates — answer sets are never included."""
     return [
-        ProblemPublic(index=i, id=p.id, title=p.title, spec=p.spec, code=p.code)
+        ProblemPublic(
+            index=i,
+            id=p.id,
+            title=p.title,
+            difficulty=p.difficulty,
+            spec=p.spec,
+            provided_tests=list(p.provided_tests),
+        )
         for i, p in enumerate(PROBLEMS)
     ]
 
@@ -66,7 +73,13 @@ async def submit_problem(
     judged = await judge_submission(problem, flaws)
     gt_flaws = [asdict(f) for f in problem.flaws]
     matches = [m.model_dump() for m in judged.matches]
-    score = scoring.score_submission(gt_flaws, flaws, matches, report=judged.report)
+    score = scoring.score_submission(
+        gt_flaws,
+        flaws,
+        matches,
+        report=judged.report,
+        already_covered_indices=judged.already_covered_indices,
+    )
 
     existing = (
         await db.execute(
@@ -116,6 +129,8 @@ async def build_result(db: AsyncSession, session_id: str) -> ResultResponse:
                 problem_index=sub.problem_index,
                 problem_id=sub.problem_id,
                 title=PROBLEMS[sub.problem_index].title,
+                difficulty=PROBLEMS[sub.problem_index].difficulty,
+                provided_tests=list(PROBLEMS[sub.problem_index].provided_tests),
                 candidate_flaws=sub.candidate_flaws or [],
                 flaws=[ResultFlaw(**f) for f in score.get("flaws", [])],
                 false_positives=score.get("false_positives", []),

@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     grading_mode: Literal["inline", "rq"] = "inline"
 
+    # On startup, seed the coding-test problems when the table is empty so a
+    # fresh DB serves problems without a manual `python -m app.scripts.seed_problems`
+    # step. Non-destructive (only runs when empty). Disable for prod/migrations.
+    auto_seed_problems: bool = True
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

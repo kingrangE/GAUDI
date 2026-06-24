@@ -50,8 +50,11 @@ async def _get_attempt(db: AsyncSession, session_id: str, topic_index: int) -> R
     return attempt
 
 
-async def create_session(db: AsyncSession, candidate_name: str) -> CreateSessionResponse:
-    session = RejectionSession(candidate_name=candidate_name)
+async def create_session(
+    db: AsyncSession, candidate_name: str | None = None
+) -> CreateSessionResponse:
+    name = (candidate_name or "").strip() or "익명"
+    session = RejectionSession(candidate_name=name)
     db.add(session)
     await db.flush()  # assign session.id before linking attempts
     for index, topic in enumerate(TOPICS):
@@ -63,9 +66,14 @@ async def create_session(db: AsyncSession, candidate_name: str) -> CreateSession
     await db.commit()
     return CreateSessionResponse(
         session_id=session.id,
-        candidate_name=candidate_name,
+        candidate_name=name,
         topics=[
-            TopicMeta(index=i, title=t.title, description=t.description)
+            TopicMeta(
+                index=i,
+                title=t.title,
+                description=t.description,
+                requirements=list(t.requirements),
+            )
             for i, t in enumerate(TOPICS)
         ],
     )
@@ -105,19 +113,27 @@ async def score_session(db: AsyncSession, session_id: str) -> ResultResponse:
     )
     attempts = list(result.scalars())
 
+    # The candidate may pick and complete a single topic — score only the
+    # attempts that were both generated and submitted; ignore untouched ones.
+    completed = [
+        a for a in attempts if a.generated_items is not None and a.selections is not None
+    ]
+    if not completed:
+        raise HTTPException(
+            status_code=409, detail="complete at least one topic before scoring"
+        )
+
     per_attempt_scores: list[dict] = []
-    for attempt in attempts:
-        if attempt.generated_items is None or attempt.selections is None:
-            raise HTTPException(
-                status_code=409, detail="all topics must be generated and submitted"
-            )
+    for attempt in completed:
         items = [GeneratedItem(**i) for i in attempt.generated_items]
         flagged_ids = list(attempt.selections.get("flagged_ids", []))
         reasons = dict(attempt.selections.get("reasons", {}))
-        judge = await judge_attempt(attempt.topic_title, items, flagged_ids, reasons)
-        scored = score_items(
-            attempt.generated_items, flagged_ids, judge.bonus_item_ids
-        )
+        requirements = list(TOPICS[attempt.topic_index].requirements)
+        judge = await judge_attempt(requirements, items, flagged_ids, reasons)
+        out_of_scope_ids = [
+            j.item_id for j in judge.judgements if not j.in_requirements
+        ]
+        scored = score_items(attempt.generated_items, flagged_ids, out_of_scope_ids)
         attempt.judge_result = {
             "report": judge.report,
             "items": scored["items"],
@@ -150,7 +166,9 @@ async def get_result(db: AsyncSession, session_id: str) -> ResultResponse:
 
     topics: list[ResultTopic] = []
     for attempt in attempts:
-        judge_result = attempt.judge_result or {}
+        if attempt.judge_result is None:
+            continue  # only show topics that were actually completed and scored
+        judge_result = attempt.judge_result
         topics.append(
             ResultTopic(
                 topic_index=attempt.topic_index,

@@ -1,62 +1,199 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { CodeMeta, CodePanel } from "@/components/ui/CodePanel";
 import { Panel } from "@/components/ui/Panel";
-import { createSession } from "@/features/rejection-eval/api";
+import { SectionLabel } from "@/components/ui/SectionLabel";
+import { createSession, generateTopic, submitTopic } from "@/features/rejection-eval/api";
+import { ItemChecklist } from "@/features/rejection-eval/components/ItemChecklist";
+import type { PublicItem, TopicMeta } from "@/features/rejection-eval/types";
 
-export default function StartPage() {
+export default function RejectionEvalPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [topics, setTopics] = useState<TopicMeta[]>([]);
+  const [selected, setSelected] = useState(0);
+  const [phase, setPhase] = useState<"prompt" | "review">("prompt");
+  const [prompt, setPrompt] = useState("");
+  const [items, setItems] = useState<PublicItem[]>([]);
+  const [flagged, setFlagged] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function start() {
-    if (!name.trim()) return;
-    setLoading(true);
+  // The candidate is identified by the entry code, so start the session
+  // automatically — no name prompt.
+  useEffect(() => {
+    let active = true;
+    createSession()
+      .then((session) => {
+        if (!active) return;
+        setSessionId(session.session_id);
+        setTopics(session.topics);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setError("세션을 시작하지 못했습니다. 백엔드가 실행 중인지 확인하세요.");
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const topic = topics[selected];
+  const locked = phase === "review";
+
+  function toggle(id: string) {
+    setFlagged((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  async function onGenerate() {
+    if (!sessionId || !prompt.trim()) return;
+    setBusy(true);
     setError(null);
     try {
-      const session = await createSession(name.trim());
-      sessionStorage.setItem(
-        `reval:topics:${session.session_id}`,
-        JSON.stringify(session.topics),
-      );
-      router.push(`/rejection-eval/${session.session_id}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "세션 생성 실패");
-      setLoading(false);
+      const res = await generateTopic(sessionId, selected, prompt.trim());
+      setItems(res.items);
+      setFlagged([]);
+      setPhase("review");
+    } catch {
+      setError("AI 설계 생성에 실패했습니다. 잠시 후 다시 시도하세요.");
+    } finally {
+      setBusy(false);
     }
   }
 
-  return (
-    <div className="py-8">
-      <p className="text-sm font-semibold text-brand-600">거부 능력</p>
-      <h1 className="mt-1 text-2xl font-bold text-ink-900">거부 능력 평가</h1>
-      <p className="mt-2 text-ink-soft">
-        고정 주제 3개에 대해 AI에게 설계를 지시하고, AI가 만든 설계 항목 중 잘못된 것을
-        찾아내세요. 정밀도·재현율로 채점됩니다.
-      </p>
+  async function onSubmit() {
+    if (!sessionId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await submitTopic(sessionId, selected, flagged);
+      setSubmitted(true);
+    } catch {
+      setError("제출에 실패했습니다. 잠시 후 다시 시도하세요.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-      <Panel className="mt-6">
-        <label htmlFor="candidate" className="block text-sm font-medium text-ink-soft">
-          응시자 이름
+  function onScore() {
+    if (!sessionId) return;
+    // Navigate immediately; the result page runs the scoring and shows a spinner.
+    router.push(`/rejection-eval/result/${sessionId}`);
+  }
+
+  if (loading) {
+    return <p className="py-8 text-ink-soft">평가를 준비하는 중…</p>;
+  }
+  if (topics.length === 0) {
+    return <p className="py-8 text-bad-600">{error ?? "주제를 불러오지 못했습니다."}</p>;
+  }
+
+  return (
+    <div className="space-y-4 py-6">
+      <div>
+        <p className="text-sm font-semibold text-brand-600">거부 능력</p>
+        <h1 className="text-xl font-bold text-ink-900">거부 능력 평가</h1>
+      </div>
+
+      {/* Topic picker (locked once generation starts) */}
+      <Panel className="flex flex-wrap items-center justify-between gap-3">
+        <label htmlFor="topic-picker" className="flex items-center gap-2 text-sm">
+          <span className="font-medium text-ink-900">주제 선택</span>
+          <select
+            id="topic-picker"
+            aria-label="주제 선택"
+            value={selected}
+            disabled={locked}
+            onChange={(e) => setSelected(Number(e.target.value))}
+            className="rounded-md border border-line bg-paper px-3 py-1.5 font-mono text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:opacity-60"
+          >
+            {topics.map((t) => (
+              <option key={t.index} value={t.index}>
+                {t.title}
+              </option>
+            ))}
+          </select>
         </label>
-        <input
-          id="candidate"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="이름을 입력하세요"
-          className="mt-2 w-full max-w-md rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-        />
-        <div className="mt-4">
-          <Button onClick={start} disabled={loading || !name.trim()}>
-            {loading ? "시작 중…" : "평가 시작"}
-          </Button>
-        </div>
-        {error ? <p className="mt-3 text-sm text-bad-600">{error}</p> : null}
+        {locked ? (
+          <Badge tone="brand">진행 중 — 주제 고정됨</Badge>
+        ) : (
+          <span className="text-sm text-ink-soft">한 개의 주제를 골라 진행합니다.</span>
+        )}
       </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {/* Left — topic + requirements (the 문제) */}
+        <Panel className="h-fit">
+          <SectionLabel>주제</SectionLabel>
+          <h2 className="mt-2 text-lg font-bold text-ink-900">{topic.title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">{topic.description}</p>
+          {topic.requirements.length > 0 ? (
+            <div className="mt-4">
+              <SectionLabel>기능 요구사항</SectionLabel>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-ink-900">
+                {topic.requirements.map((req, i) => (
+                  <li key={i}>{req}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <p className="mt-4 rounded-lg bg-paper p-3 text-xs leading-relaxed text-ink-soft">
+            {phase === "prompt"
+              ? "위 기능 요구사항을 만족하도록 AI에게 설계를 지시하는 프롬프트를 작성하세요."
+              : "AI 설계 항목 중 잘못 적용된 기술·방향성, 그리고 요구사항에 없는 항목을 모두 거부(체크)하세요."}
+          </p>
+        </Panel>
+
+        {/* Right — action */}
+        {phase === "prompt" ? (
+          <Panel className="flex flex-col">
+            <SectionLabel>INSTRUCT THE AGENT</SectionLabel>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={10}
+              placeholder="예) 요구사항을 만족하도록 설계해줘. 인증·저장·검증 방식까지 구체적으로…"
+              className="mt-3 w-full flex-1 resize-none rounded-lg border border-line p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            />
+            <div className="mt-3">
+              <Button onClick={onGenerate} disabled={busy || !prompt.trim()}>
+                {busy ? "생성 중…" : "AI 설계 생성"}
+              </Button>
+            </div>
+          </Panel>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <CodePanel label="AGENT OUTPUT" meta={<CodeMeta>설계 항목 {items.length}</CodeMeta>}>
+              <ItemChecklist items={items} flagged={flagged} onToggle={toggle} />
+            </CodePanel>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-ink-soft">{flagged.length}개 거부함</span>
+              {submitted ? (
+                <Button onClick={onScore}>채점</Button>
+              ) : (
+                <Button onClick={onSubmit} disabled={busy}>
+                  {busy ? "제출 중…" : "제출"}
+                </Button>
+              )}
+            </div>
+            {submitted ? (
+              <p className="text-sm text-good-600">제출됨 — 채점을 누르면 결과를 확인합니다.</p>
+            ) : null}
+          </div>
+        )}
+      </div>
+      {error ? <p className="text-sm text-bad-600">{error}</p> : null}
     </div>
   );
 }

@@ -4,6 +4,8 @@ export interface TopicMeta {
   index: number;
   title: string;
   description: string;
+  /** The fixed functional requirements (the "문제") shown to the candidate. */
+  requirements: string[];
 }
 
 export interface CreateSessionResponse {
@@ -31,11 +33,17 @@ export type Outcome =
 
 export type FlawType = "wrong_tech" | "wrong_direction" | "none";
 
+/** Why an item had to be rejected: an injected wrong design, or a decision
+ * not in the requirements (out of scope), or not a flaw at all. */
+export type FlawSource = "injected" | "out_of_scope" | "none";
+
 export interface ResultItem {
   id: string;
   text: string;
   is_flawed: boolean;
   flaw_type: FlawType;
+  in_requirements: boolean;
+  flaw_source: FlawSource;
   explanation: string;
   flagged: boolean;
   outcome: Outcome;

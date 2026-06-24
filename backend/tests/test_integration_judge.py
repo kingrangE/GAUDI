@@ -18,6 +18,8 @@ pytestmark = [
 
 async def test_real_judge_scores_a_problem():
     adapter = TestDesignAdapter()
-    outcome = await adapter.score(0, ["빈 리스트를 넣으면 0으로 나눠 ZeroDivisionError가 난다"])
+    outcome = await adapter.score(
+        0, ["파일 크기 상한이 없어 거대한 파일을 올려 스토리지를 고갈시킬 수 있다"]
+    )
     assert 0.0 <= outcome.recall <= 1.0
     assert set(outcome.matched_ids) <= set(outcome.gt_ids)

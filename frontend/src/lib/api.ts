@@ -34,3 +34,14 @@ export function submitProblem(
 export function getResult(sessionId: string): Promise<ResultResponse> {
   return jsonFetch<ResultResponse>(`/test-design/sessions/${sessionId}/result`);
 }
+
+/** A submission handed off from the solve page to the result page, which grades
+ *  it (showing a spinner) before fetching the aggregated result. */
+export interface PendingSubmission {
+  index: number;
+  flaws: string[];
+}
+
+export function pendingSubmissionKey(sessionId: string): string {
+  return `td:pending:${sessionId}`;
+}

@@ -24,6 +24,7 @@ import demo_solutions
 from app.core.config import get_settings
 from app.db.session import init_models
 from app.features.coding_test.router import router as coding_test_router
+from app.features.cs_eval.router import router as cs_eval_router
 from app.features.rejection_eval.router import router as rejection_eval_router
 from app.features.test_design import models as _test_design_models  # noqa: F401  (register tables)
 from app.features.test_design.routes import router as test_design_router
@@ -36,6 +37,16 @@ from feature_spec_design.api import router as spec_design_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_models()
+    if get_settings().auto_seed_problems:
+        from app.scripts.seed_cs_questions import seed_if_empty as seed_cs_questions
+        from app.scripts.seed_problems import seed_if_empty as seed_problems
+
+        seeded = await seed_problems()
+        if seeded:
+            print(f"auto-seeded {seeded} coding-test problems into an empty DB")
+        seeded_cs = await seed_cs_questions()
+        if seeded_cs:
+            print(f"auto-seeded {seeded_cs} CS-eval questions into an empty DB")
     yield
 
 
@@ -51,6 +62,7 @@ app.add_middleware(
 
 app.include_router(rejection_eval_router)
 app.include_router(coding_test_router)
+app.include_router(cs_eval_router)
 app.include_router(test_design_router)
 app.include_router(dev_prompting_router)
 app.include_router(spec_design_router)

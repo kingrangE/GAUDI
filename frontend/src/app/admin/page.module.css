@@ -5,6 +5,43 @@
   margin-bottom: 18px;
 }
 
+.codePanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.codeHint {
+  margin: 10px 0 0;
+  color: #5b6270;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.codeList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.codeChip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eceef3;
+  padding: 8px 14px;
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #14161c;
+}
+
 .metric,
 .panel {
   border: 1px solid var(--line);

@@ -79,6 +79,40 @@ def test_matched_text_resolved_from_candidate_index():
     assert s["false_positives"] == ["first"]
 
 
+def test_already_covered_items_are_neutral():
+    # idx0 matches f1; idx1 merely restates a provided basic test (neutral);
+    # idx2 is a genuine false positive.
+    matches = [_match("f1", True, 0, 2), _match("f2", False), _match("f3", False)]
+    s = score_submission(
+        GT3,
+        ["right", "기본 테스트 재서술", "noise"],
+        matches,
+        already_covered_indices=[1],
+    )
+    assert s["recall"] == 1 / 3
+    # the covered item is dropped from the precision denominator: 1 tp of 2 claims
+    assert s["precision"] == 1 / 2
+    assert s["false_positives"] == ["noise"]
+
+
+def test_only_restating_provided_tests_is_not_penalized():
+    matches = [_match("f1", False), _match("f2", False), _match("f3", False)]
+    s = score_submission(
+        GT3, ["기본1", "기본2"], matches, already_covered_indices=[0, 1]
+    )
+    assert s["precision"] == 1.0  # all claims neutral => no false alarms
+    assert s["false_positives"] == []
+    assert s["recall"] == 0.0
+
+
+def test_match_wins_over_already_covered():
+    # if the judge marks a matched index as also covered, the match takes priority.
+    matches = [_match("f1", True, 0, 2), _match("f2", False), _match("f3", False)]
+    s = score_submission(GT3, ["right"], matches, already_covered_indices=[0])
+    assert s["precision"] == 1.0
+    assert s["false_positives"] == []
+
+
 def test_aggregate_micro_average():
     a = score_submission(
         GT3, ["x"], [_match("f1", True, 0, 2), _match("f2", False), _match("f3", False)]

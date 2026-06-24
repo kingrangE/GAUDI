@@ -20,8 +20,9 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function createSession(candidateName: string): Promise<CreateSessionResponse> {
-  return request("/api/rejection-eval/sessions", { candidate_name: candidateName });
+export function createSession(): Promise<CreateSessionResponse> {
+  // Anonymous: the entry gate handles identity; no name is collected here.
+  return request("/api/rejection-eval/sessions", {});
 }
 
 export function generateTopic(

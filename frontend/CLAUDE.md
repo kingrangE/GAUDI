@@ -29,3 +29,11 @@ npm test -- src/foo.test.ts   # single test file
 ## Conventions (fill in as the frontend grows)
 - Tests colocated as `*.test.ts(x)` (Vitest); Playwright for E2E.
 - Keep API base URL / secrets in env (`NEXT_PUBLIC_*` only for non-sensitive values). See the `test-writing` skill for testing.
+
+## Design
+- All UI follows the **"judge console"** language: light cool-gray chrome + **one** dark `ink` code well
+  + **one** `brand-600` accent, monospace kickers/verdicts. **Reuse the `@/components/ui` primitives and
+  palette tokens (`brand`/`ink`/`good`/`bad`/`warn`) — never raw hex (`text-[#...]`).**
+- Full guide (tokens, primitive catalog, Tailwind-vs-CSS-Module rule, build checklist): the
+  **`frontend-design`** skill (`.claude/skills/frontend-design/SKILL.md`). Source of truth in code:
+  `tailwind.config.ts` + `src/app/globals.css`.

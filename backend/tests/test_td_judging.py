@@ -28,12 +28,17 @@ async def test_judge_submission_builds_payload_and_returns_output(monkeypatch):
     monkeypatch.setattr(judging, "complete_structured", fake_complete)
 
     problem = PROBLEMS[0]
-    out = await judging.judge_submission(problem, ["빈 리스트면 터진다"])
+    out = await judging.judge_submission(problem, ["파일 크기 상한이 없다"])
 
     assert isinstance(out, JudgeOutput)
     assert out.matches[0].ground_truth_id == "f1"
     assert captured["schema"] is JudgeOutput
     payload = json.loads(captured["user"])
-    # ground truth flaw ids are passed to the judge
+    # ground truth item ids are passed to the judge
     assert {g["id"] for g in payload["ground_truth"]} == {f.id for f in problem.flaws}
-    assert payload["candidate_flaws"] == ["빈 리스트면 터진다"]
+    assert payload["candidate_flaws"] == ["파일 크기 상한이 없다"]
+    # scenarios are prose-only — no code is sent to the judge
+    assert payload["spec"]
+    assert "code" not in payload
+    # provided basic tests are given to the judge as context
+    assert payload["provided_tests"] == list(problem.provided_tests)
