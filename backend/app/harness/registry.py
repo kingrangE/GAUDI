@@ -21,6 +21,9 @@ class HarnessTarget:
     name: str
     make_adapter: Callable[[str | None], JudgeAdapter]  # model pin (or None) -> adapter
     fixtures_dir: Path
+    # Optional custom inputs shaper for features whose judge doesn't fit the standard fixture
+    # set (e.g. a per-problem classifier). When None, the runner shapes the standard fixtures.
+    build_inputs: Callable[[], dict] | None = None
 
 
 _REGISTRY: dict[str, HarnessTarget] = {}

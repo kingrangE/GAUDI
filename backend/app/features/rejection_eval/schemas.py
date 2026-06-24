@@ -45,6 +45,15 @@ class JudgeOutput(BaseModel):
     judgements: list[ItemJudgement] = Field(default_factory=list)
 
 
+class PairwiseVerdict(BaseModel):
+    """Head-to-head judgement: which of two candidates better rejected the wrong
+    / out-of-scope design items. Used by the offline judge-reliability harness
+    (position-bias), not by the app request path."""
+
+    winner: Literal["A", "B", "tie"]
+    reason: str
+
+
 # --- API: create session -----------------------------------------------------
 class CreateSessionRequest(BaseModel):
     # Optional: sessions are anonymous; identity is handled by the entry gate.

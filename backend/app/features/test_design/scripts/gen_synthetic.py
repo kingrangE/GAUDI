@@ -23,8 +23,11 @@ from app.llm.structured import complete_structured
 _FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
 _QUALITY_PROMPTS = {
-    "strong": "검증해야 할 항목을 근본 원인·조건까지 정확하고 폭넓게 3~4개 짚으세요.",
-    "mediocre": "검증 항목을 1~2개만, 다소 모호하게(증상 위주로) 짚으세요.",
+    "strong": "추가로 검증해야 할 항목을 근본 원인·조건까지 정확하고 폭넓게 3~4개 짚으세요.",
+    "mediocre": (
+        "추가 검증 항목을 1~2개만, 다소 모호하게(증상 위주로) 짚으세요. "
+        "이미 구현된 기본 테스트를 그대로 다시 적은 항목을 하나 섞어도 됩니다."
+    ),
     "hallucinated": "실제 검증 항목과 무관하거나 사실이 틀린 지적을 1~2개 적으세요.",
 }
 
@@ -64,7 +67,12 @@ def main() -> None:
     path = _FIXTURES / "synthetic_submissions.json"
     path.write_text(json.dumps(submissions, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"wrote {len(submissions)} submissions to {path}")
-    print("Now hand-label these in human_gold.json (same keys).")
+    print(
+        "Now hand-label these in human_gold.json (same keys): for each key set "
+        "matched_ids to the practical-scenario flaw ids it covers (a restated "
+        "provided_test is neutral — leave it out) and recall = len(matched_ids)/"
+        "len(problem flaws). Then run `pytest -m harness` to check coherence."
+    )
 
 
 if __name__ == "__main__":
