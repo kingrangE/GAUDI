@@ -1,8 +1,8 @@
-"""Smoke test for the assembled app entrypoint (router mounted, health up)."""
+"""Smoke test for the unified app entrypoint (dev-prompting mounted, health up)."""
 
 from fastapi.testclient import TestClient
 
-from main import app
+from app.main import app
 
 
 def test_health():
