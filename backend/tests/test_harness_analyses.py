@@ -193,12 +193,42 @@ def stub_td_judge(monkeypatch):
     monkeypatch.setattr(harness_adapter, "judge_pairwise", fake_pairwise)
 
 
+def _load_fixture(name: str):
+    import json
+    from pathlib import Path
+
+    fixtures = (
+        Path(__file__).resolve().parents[1]
+        / "app"
+        / "features"
+        / "test_design"
+        / "fixtures"
+    )
+    return json.loads((fixtures / name).read_text(encoding="utf-8"))
+
+
+def _pairs_within_problem(synthetic):
+    """Build (A, B) pairs from consecutive submissions sharing a problem_index.
+
+    Kept local so this test does not depend on runner.py internals (which are
+    feature-specific and may be refactored).
+    """
+    from itertools import groupby
+
+    pairs = []
+    keyed = sorted(synthetic, key=lambda s: s["problem_index"])
+    for pi, group in groupby(keyed, key=lambda s: s["problem_index"]):
+        subs = list(group)
+        for a, b in zip(subs, subs[1:]):
+            pairs.append({"problem_index": pi, "flaws_a": a["flaws"], "flaws_b": b["flaws"]})
+    return pairs
+
+
 async def test_harness_pipeline_runs_over_real_fixtures(stub_td_judge):
     from app.features.test_design.harness_adapter import TestDesignAdapter
-    from app.harness.runner import _build_pairs, _load
 
-    synthetic = _load("synthetic_submissions.json")
-    gold_labels = {g["key"]: g for g in _load("human_gold.json")}
+    synthetic = _load_fixture("synthetic_submissions.json")
+    gold_labels = {g["key"]: g for g in _load_fixture("human_gold.json")}
     adapter = TestDesignAdapter()
 
     items = [{"problem_index": s["problem_index"], "flaws": s["flaws"]} for s in synthetic]
@@ -224,6 +254,6 @@ async def test_harness_pipeline_runs_over_real_fixtures(stub_td_judge):
     assert -1.0 <= agreement["kappa"] <= 1.0
     assert 0.0 <= agreement["mae_recall"] <= 1.0
 
-    position = await run_position_bias(adapter, _build_pairs(synthetic)[:2])
+    position = await run_position_bias(adapter, _pairs_within_problem(synthetic)[:2])
     # stub always says 'A' -> ordering flips the winner every time
     assert position["flip_rate"] == pytest.approx(1.0)
