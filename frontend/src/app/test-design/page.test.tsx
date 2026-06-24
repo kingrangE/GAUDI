@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -12,11 +12,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 const createSession = vi.fn();
-const submitProblem = vi.fn();
 vi.mock("@/lib/api", () => ({
   createSession: (name: string) => createSession(name),
-  submitProblem: (sessionId: string, index: number, flaws: string[]) =>
-    submitProblem(sessionId, index, flaws),
+  pendingSubmissionKey: (sessionId: string) => `td:pending:${sessionId}`,
 }));
 
 const SESSION: CreateSessionResponse = {
@@ -35,7 +33,7 @@ const SESSION: CreateSessionResponse = {
 afterEach(() => {
   push.mockClear();
   createSession.mockReset();
-  submitProblem.mockReset();
+  sessionStorage.clear();
 });
 
 describe("TestDesignPage", () => {
@@ -62,23 +60,21 @@ describe("TestDesignPage", () => {
     expect(screen.getByText("재고 시나리오")).toBeTruthy();
   });
 
-  it("submits the current problem, then enables viewing results", async () => {
+  it("stashes the submission and routes straight to the result page", async () => {
     createSession.mockResolvedValue(SESSION);
-    submitProblem.mockResolvedValue({ problem_index: 0, submitted: true });
     const user = userEvent.setup();
     render(<TestDesignPage />);
 
     await screen.findByLabelText("문제 선택");
 
     await user.type(screen.getByLabelText("검증 항목 1"), "파일 크기 상한 없음");
-    await user.click(screen.getByRole("button", { name: "제출" }));
+    await user.click(screen.getByRole("button", { name: "제출하고 결과 보기" }));
 
-    await waitFor(() =>
-      expect(submitProblem).toHaveBeenCalledWith("sess-1", 0, ["파일 크기 상한 없음"]),
-    );
-
-    // viewing results navigates to the session result route
-    await user.click(screen.getByRole("button", { name: "결과 보기" }));
+    // the pending submission is handed off for the result page to grade
+    expect(JSON.parse(sessionStorage.getItem("td:pending:sess-1") ?? "{}")).toEqual({
+      index: 0,
+      flaws: ["파일 크기 상한 없음"],
+    });
     expect(push).toHaveBeenCalledWith("/test-design/result/sess-1");
   });
 });
