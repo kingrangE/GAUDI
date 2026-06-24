@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # overridable via the LLM_MODEL env var.
     openai_api_key: str = ""
     llm_model: str = "gpt-4o-mini"
+    # LLM-as-judge runs COLD by default: a judge must be reproducible (same submission ->
+    # same verdict). Structured-output judging defaults to this; override via JUDGE_TEMPERATURE.
+    judge_temperature: float = 0.0
 
     # Comma-separated list of allowed CORS origins for the frontend.
     cors_origins: str = "http://localhost:3000"

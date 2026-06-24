@@ -14,6 +14,7 @@ import json
 import re
 from collections import Counter
 
+from app.judge.consensus import tally
 from feature_spec_design.models import (
     QUALITY_SCORES,
     UNSPECIFIED,
@@ -149,21 +150,19 @@ def aggregate_requirements(
 def aggregate_dimensions(
     judgements: list[SampleJudgement], task: SpecTask, threshold: float
 ) -> list[DimensionResult]:
-    n = len(judgements) or 1
     results: list[DimensionResult] = []
     for dim in task.dimensions:
         values = [j.decisions.get(dim.key, UNSPECIFIED) for j in judgements]
-        counts = Counter(values)
-        top_value, top_count = counts.most_common(1)[0]
-        agreement = top_count / n
+        vote = tally(values)  # shared consensus kernel: modal verdict + agreement
+        top_value, agreement = vote.winner, vote.agreement
         grade, qscore = quality_of(dim, top_value)
         results.append(
             DimensionResult(
                 key=dim.key,
                 label=dim.label,
-                distribution=dict(counts),
+                distribution=vote.counts,
                 top_value=top_value,
-                agreement=round(agreement, 4),
+                agreement=round(vote.agreement, 4),
                 quality=grade,
                 quality_score=qscore,
                 score=round(agreement * qscore, 4),

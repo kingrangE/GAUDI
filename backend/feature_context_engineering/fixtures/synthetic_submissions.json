@@ -1,0 +1,74 @@
+[
+  {
+    "key": "td-full",
+    "problem_index": 0,
+    "author_model": "gpt-4o",
+    "flaws": [
+      "# todo-api\n\nFastAPI 할 일(todo) REST API.\n\n## 명령어\n- 개발 서버: `make dev` (uvicorn app.main:app --reload, http://localhost:8000)\n- 테스트: `make test` (pytest)\n\n## 구조\n- 라우터는 `app/routes/`에 리소스별로 두고 `app/main.py`에서 `include_router`로 연결한다.\n- `app/models.py`에 Pydantic 스키마(TodoIn/Todo)와 SQLAlchemy 모델(TodoRow)을 함께 둔다.\n\n## 컨벤션\n- 테스트는 인메모리 `app/storage.py`로 돌린다 — 실제 Postgres를 띄우지 않는다.\n- 설정과 `DATABASE_URL`은 `.env`에서 읽는다(pydantic-settings); 하드코딩하지 않는다.\n- 없는 리소스는 `HTTPException(status_code=404)`로 응답한다.\n\n## 경계\n- `.env`와 시크릿은 절대 커밋하지 않는다.\n"
+    ]
+  },
+  {
+    "key": "td-mid",
+    "problem_index": 0,
+    "author_model": "gpt-4o-mini",
+    "flaws": [
+      "# todo-api\n\nFastAPI todo 서비스.\n\n## 명령어\n- 개발 서버 실행: `make dev`\n- 테스트: `make test`\n\n## 구조\n- 라우터는 `app/routes/`에 모듈별로 두고 `app/main.py`에서 `include_router`로 연결한다.\n- `app/models.py`에 Pydantic 스키마와 SQLAlchemy 모델이 함께 들어 있다.\n\n## 참고\n- 존재하지 않는 todo는 `HTTPException` 404로 응답한다.\n"
+    ]
+  },
+  {
+    "key": "td-thin",
+    "problem_index": 0,
+    "author_model": "gpt-4o",
+    "flaws": [
+      "# todo-api\n\nFastAPI 기반 todo API.\n\n- `make dev`로 개발 서버를 띄운다.\n- `make test`로 테스트를 돌린다.\n"
+    ]
+  },
+  {
+    "key": "bd-full",
+    "problem_index": 1,
+    "author_model": "gpt-4o-mini",
+    "flaws": [
+      "# board-api\n\nFastAPI 게시판 CRUD API (글/댓글).\n\n## 명령어\n- 개발 서버: `make dev` (http://localhost:8000/docs)\n- 테스트: `make test` (pytest)\n\n## 구조\n- 새 리소스는 `app/routers/<name>.py`에 `APIRouter(prefix=...)`로 만들고 `app/main.py`에서\n  `include_router`로 연결한다.\n- ORM 모델(`app/models.py`)과 Pydantic 스키마(`app/schemas.py`)를 분리한다 —\n  ORM 객체를 그대로 반환하지 않는다.\n\n## 컨벤션\n- 생성(create) 엔드포인트는 HTTP 201을 반환한다.\n- 없는 리소스는 `HTTPException(404)`를 반환한다.\n- 목록은 `page`/`size` 쿼리로 페이지네이션한다(page는 1-based).\n- 테스트는 인메모리 `app/storage.py`로 돌린다 — 실제 DB가 필요 없다.\n\n## 경계\n- `.env`와 시크릿은 절대 커밋하지 않는다.\n"
+    ]
+  },
+  {
+    "key": "bd-mid",
+    "problem_index": 1,
+    "author_model": "gpt-4o",
+    "flaws": [
+      "# board-api\n\n게시판 CRUD API (FastAPI).\n\n## 명령어\n- 실행: `make dev`\n- 테스트: `make test`\n\n## 구조\n- 리소스마다 `app/routers/<name>.py`에 `APIRouter(prefix=...)`를 만들고\n  `app/main.py`에서 `include_router`한다.\n\n## 컨벤션\n- 글/댓글 생성은 201을 반환한다.\n- 없는 글은 404(`HTTPException`)로 응답한다.\n"
+    ]
+  },
+  {
+    "key": "bd-thin",
+    "problem_index": 1,
+    "author_model": "gpt-4o",
+    "flaws": [
+      "# board-api\n\nFastAPI 게시판 API.\n\n- `make dev`로 서버 실행.\n- `make test`로 테스트.\n"
+    ]
+  },
+  {
+    "key": "wk-full",
+    "problem_index": 2,
+    "author_model": "gpt-4o",
+    "flaws": [
+      "# web-kanban\n\nReact + Vite + TypeScript 프론트엔드 전용 칸반 보드.\n\n## 명령어\n- 설치: `npm install`\n- 개발 서버: `npm run dev` (http://localhost:5173)\n\n## 구조\n- 컴포넌트는 Board → Column → Card 구조이며, 도메인 타입은 `src/types.ts`에 둔다.\n\n## 컨벤션\n- 보드 상태는 `useBoard` 훅을 통해서만 다룬다; Column/Card는 상태 없는 presentational 컴포넌트다.\n- 백엔드도 데이터 fetch도 없다 — 완전한 클라이언트 사이드 앱이다.\n- 컬럼은 고정 집합 `todo`/`doing`/`done`(ColumnId)이다.\n- TypeScript strict를 켜고 JSX는 자동 런타임(react-jsx)을 쓴다.\n\n## 경계\n- 백엔드/API 레이어를 추가하지 않는다; 영속화가 필요하면 클라이언트 사이드(localStorage 등)로 한다.\n"
+    ]
+  },
+  {
+    "key": "wk-mid",
+    "problem_index": 2,
+    "author_model": "gpt-4o-mini",
+    "flaws": [
+      "# web-kanban\n\nReact + Vite + TypeScript 칸반 보드.\n\n## 명령어\n- `npm install` 후 `npm run dev`로 개발 서버 실행 (http://localhost:5173).\n\n## 구조\n- 컴포넌트 구조는 Board → Column → Card이고, 타입은 `src/types.ts`에 정의한다.\n\n## 컨벤션\n- 컬럼은 고정된 `todo`/`doing`/`done`(ColumnId) 집합이다.\n- TypeScript strict 모드, JSX는 react-jsx 자동 런타임을 사용한다.\n"
+    ]
+  },
+  {
+    "key": "wk-thin",
+    "problem_index": 2,
+    "author_model": "gpt-4o-mini",
+    "flaws": [
+      "# web-kanban\n\n프론트엔드 칸반 보드.\n\n- `npm install` 후 `npm run dev`로 실행한다.\n"
+    ]
+  }
+]

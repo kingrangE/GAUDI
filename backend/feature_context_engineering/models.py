@@ -79,6 +79,8 @@ class CriterionResult(BaseModel):
     category: str = ""
     covered: bool
     evidence: str = ""
+    # Consensus confidence: share of judge runs backing this verdict (None = single run).
+    agreement: float | None = None
 
 
 class DimensionScore(BaseModel):

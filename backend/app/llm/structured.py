@@ -16,17 +16,25 @@ T = TypeVar("T", bound=BaseModel)
 
 
 async def complete_structured(
-    system: str, user: str, schema: type[T], model: str | None = None
+    system: str,
+    user: str,
+    schema: type[T],
+    model: str | None = None,
+    *,
+    temperature: float | None = None,
 ) -> T:
     """Run a chat completion that is forced to match ``schema`` and return it parsed.
 
     ``model`` defaults to the centralized ``settings.llm_model``; the offline
     judge-reliability harness passes an explicit model to sweep across the panel.
+    ``temperature`` defaults to the centralized ``settings.judge_temperature`` (0.0): a
+    judge must be reproducible, so structured judging runs COLD unless a caller overrides it.
     """
     client = get_client()
     settings = get_settings()
     completion = await client.beta.chat.completions.parse(
         model=model or settings.llm_model,
+        temperature=settings.judge_temperature if temperature is None else temperature,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},

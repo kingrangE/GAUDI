@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 
+from app.judge.consensus import tally
 from feature_context_engineering.models import (
     ComponentScore,
     Criterion,
@@ -166,6 +167,66 @@ def coverage_dimension(
     return dim, results
 
 
+DEFAULT_COVERAGE_RUNS = 3
+
+
+def coverage_consensus(
+    client: LLMClient,
+    project: Project,
+    submission: Submission,
+    criteria: list[Criterion] | None = None,
+    runs: int = DEFAULT_COVERAGE_RUNS,
+) -> tuple[DimensionScore, list[CriterionResult]]:
+    """Coverage axis with consensus: judge ``runs`` times and majority-vote each criterion.
+
+    Per-criterion ``agreement`` (share of runs backing the majority verdict) is surfaced as a
+    confidence signal — a low value flags a criterion the judge keeps flip-flopping on. The
+    dimension score is computed on the majority verdicts; ``runs=1`` reduces to a single call.
+    """
+
+    criteria = criteria if criteria is not None else get_rubric(project.id)
+    runs = max(1, runs)
+    samples = [
+        {v.id: v for v in judge_submission(client, project, submission, criteria)}
+        for _ in range(runs)
+    ]
+
+    majority: list[CriterionVerdict] = []
+    results: list[CriterionResult] = []
+    agreements: list[float] = []
+    for c in criteria:
+        votes = [(s[c.id].covered if c.id in s else False) for s in samples]
+        decision = tally(votes)
+        covered = bool(decision.winner)
+        agreements.append(decision.agreement)
+        evidence = next(
+            (s[c.id].evidence for s in samples if c.id in s and s[c.id].covered == covered),
+            "",
+        )
+        majority.append(CriterionVerdict(id=c.id, covered=covered, evidence=evidence))
+        results.append(
+            CriterionResult(
+                id=c.id,
+                text=c.text,
+                category=c.category,
+                covered=covered,
+                evidence=evidence,
+                agreement=round(decision.agreement, 4),
+            )
+        )
+
+    covered_n = sum(1 for r in results if r.covered)
+    mean_agreement = round(sum(agreements) / len(agreements), 4) if agreements else 1.0
+    dim = DimensionScore(
+        key="coverage",
+        label="컨벤션·모호성 커버리지",
+        score=coverage_score(majority, criteria),
+        weight=COVERAGE_WEIGHT,
+        detail=f"{covered_n}/{len(criteria)} 충족 · {runs}회 합의 {round(mean_agreement * 100)}%",
+    )
+    return dim, results
+
+
 class ChecklistJudgeScorer:
     """ContextScorer that scores ground-truth coverage via the LLM judge."""
 
@@ -186,3 +247,59 @@ class ChecklistJudgeScorer:
         if missed:
             detail += f"; missing: {', '.join(missed)}"
         return ComponentScore(name=self.name, score=score, detail=detail)
+
+
+_PAIRWISE_SYSTEM = (
+    "두 개의 CLAUDE.md(에이전트 컨텍스트 파일)가 같은 프로젝트에 대해 작성되었습니다. 프로젝트, "
+    "파일 트리, 그리고 후보 A와 B가 주어집니다. 어느 쪽이 코딩 에이전트를 더 잘 안내하는지 "
+    "고르세요 — 프로젝트의 필수 명령·구조·컨벤션·경계를 더 정확하고 군더더기 없이 담은 쪽. "
+    "길이나 서식이 아니라 에이전트에게의 유용성으로 판단하고, 어느 쪽이 먼저 제시됐는지는 "
+    '무시하세요(내용만). JSON만 출력: {"winner": "A" | "B" | "tie", "reason": str}.'
+)
+
+
+def build_pairwise_prompt(project: Project, sub_a: Submission, sub_b: Submission) -> str:
+    """Compose the pairwise judge's user message (content-only, order-agnostic)."""
+
+    return (
+        f"# 프로젝트\n{project.title}\n{project.brief}\n\n# 파일 트리\n{_tree(project)}\n\n"
+        f"# 후보 A\n{sub_a.claude_md}\n\n# 후보 B\n{sub_b.claude_md}\n\n# 출력\nJSON만."
+    )
+
+
+def _parse_winner(raw: str) -> str:
+    """Pull {"winner": ...} out of the model output; default to 'tie' on anything unclear."""
+
+    obj: dict = {}
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            obj = parsed
+    except (json.JSONDecodeError, TypeError):
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, dict):
+                    obj = parsed
+            except json.JSONDecodeError:
+                obj = {}
+    winner = str(obj.get("winner", "")).strip().upper()
+    return winner if winner in ("A", "B") else "tie"
+
+
+def judge_pairwise(
+    client: LLMClient, project: Project, sub_a: Submission, sub_b: Submission
+) -> str:
+    """Ask which of two CLAUDE.md docs orients an agent better. Returns 'A' | 'B' | 'tie'.
+
+    Runs COLD (temperature 0.0) — a judge must be reproducible. Position bias is measured by
+    the harness re-running this with A/B swapped and checking whether the verdict flips.
+    """
+
+    raw = client.complete(
+        _PAIRWISE_SYSTEM,
+        build_pairwise_prompt(project, sub_a, sub_b),
+        temperature=0.0,
+    )
+    return _parse_winner(raw)
