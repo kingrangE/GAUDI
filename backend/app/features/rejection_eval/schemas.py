@@ -5,12 +5,19 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 FlawType = Literal["wrong_tech", "wrong_direction", "none"]
-Outcome = Literal["caught", "missed", "false_alarm", "correct_accept", "bonus_found"]
+# Why an item must be rejected: an injected wrong design, or a decision not in
+# the functional requirements (out of scope), or not a flaw at all.
+FlawSource = Literal["injected", "out_of_scope", "none"]
+Outcome = Literal["caught", "missed", "false_alarm", "correct_accept"]
 
 
 # --- LLM structured outputs --------------------------------------------------
 class GeneratedItem(BaseModel):
-    """One design decision the AI 'chose', possibly an intentional flaw."""
+    """One design decision the AI 'chose' from the candidate's prompt.
+
+    `is_flawed` marks an intentionally injected wrong design; it is independent
+    of whether the decision is in the requirements (judged separately).
+    """
 
     id: str
     text: str
@@ -23,23 +30,32 @@ class GenerationOutput(BaseModel):
     items: list[GeneratedItem]
 
 
+class ItemJudgement(BaseModel):
+    """Judge's grounding call for one item against the requirements spec."""
+
+    item_id: str
+    in_requirements: bool
+
+
 class JudgeOutput(BaseModel):
-    """Judge reconciliation: a 1-2 line report and any candidate-flagged items
-    that are genuinely real flaws even though the generator didn't intend them."""
+    """Per-item grounding (is the decision called for by the requirements?) plus
+    a 1-2 line report. Items judged `in_requirements=false` are out-of-scope flaws."""
 
     report: str
-    bonus_item_ids: list[str] = Field(default_factory=list)
+    judgements: list[ItemJudgement] = Field(default_factory=list)
 
 
 # --- API: create session -----------------------------------------------------
 class CreateSessionRequest(BaseModel):
-    candidate_name: str = Field(min_length=1)
+    # Optional: sessions are anonymous; identity is handled by the entry gate.
+    candidate_name: str | None = None
 
 
 class TopicMeta(BaseModel):
     index: int
     title: str
     description: str
+    requirements: list[str]
 
 
 class CreateSessionResponse(BaseModel):
@@ -81,6 +97,8 @@ class ResultItem(BaseModel):
     text: str
     is_flawed: bool
     flaw_type: FlawType
+    in_requirements: bool
+    flaw_source: FlawSource
     explanation: str
     flagged: bool
     outcome: Outcome
