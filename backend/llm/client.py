@@ -45,7 +45,17 @@ class OpenAIClient:
         if self._client is None:
             from openai import OpenAI
 
-            self._client = OpenAI(api_key=self._settings.api_key)
+            # Bounded timeout + retries so a stuck call fails fast instead of hanging the
+            # request (and the UI) for the SDK's 600s default. Sourced from the central
+            # Settings (lazy import avoids a module-load cycle through app.main).
+            from app.core.config import get_settings as _app_settings
+
+            cfg = _app_settings()
+            self._client = OpenAI(
+                api_key=self._settings.api_key,
+                timeout=cfg.llm_timeout_seconds,
+                max_retries=cfg.llm_max_retries,
+            )
         return self._client
 
     def complete(
