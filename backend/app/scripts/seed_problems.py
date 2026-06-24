@@ -10,17 +10,15 @@ definitions in `problems.py`.
 import asyncio
 import json
 
+from sqlalchemy import func, select
+
 from app.db.session import AsyncSessionLocal, engine, init_models
 from app.features.coding_test.models import Problem, TestCase
 from app.features.coding_test.problems import PROBLEMS, ProblemSeed
 
 
-async def _upsert(db, seed: ProblemSeed) -> None:
-    existing = await db.get(Problem, seed.id)
-    if existing is not None:
-        await db.delete(existing)  # cascade removes its test cases
-        await db.flush()
-
+def _insert(db, seed: ProblemSeed) -> None:
+    """Add one problem and its test cases to the session (no commit)."""
     db.add(
         Problem(
             id=seed.id,
@@ -47,6 +45,31 @@ async def _upsert(db, seed: ProblemSeed) -> None:
                 )
             )
             ordinal += 1
+
+
+async def _upsert(db, seed: ProblemSeed) -> None:
+    existing = await db.get(Problem, seed.id)
+    if existing is not None:
+        await db.delete(existing)  # cascade removes its test cases
+        await db.flush()
+    _insert(db, seed)
+
+
+async def seed_if_empty() -> int:
+    """Seed problems only when the table is empty; returns how many were added.
+
+    Non-destructive and idempotent: safe to call on every startup. Unlike the
+    CLI's `_upsert`, this never deletes existing problems (so it won't touch a
+    populated DB or its submissions) — it only fills a fresh/empty table.
+    """
+    async with AsyncSessionLocal() as db:
+        count = await db.scalar(select(func.count()).select_from(Problem))
+        if count:
+            return 0
+        for seed in PROBLEMS:
+            _insert(db, seed)
+        await db.commit()
+    return len(PROBLEMS)
 
 
 async def main() -> None:

@@ -36,6 +36,12 @@ from feature_spec_design.api import router as spec_design_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_models()
+    if get_settings().auto_seed_problems:
+        from app.scripts.seed_problems import seed_if_empty
+
+        seeded = await seed_if_empty()
+        if seeded:
+            print(f"auto-seeded {seeded} coding-test problems into an empty DB")
     yield
 
 
