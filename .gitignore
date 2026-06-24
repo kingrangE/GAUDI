@@ -13,6 +13,9 @@ venv/
 .ruff_cache/
 .mypy_cache/
 
+# Local data (generated SQLite dev DB — recreated from seed scripts)
+and_you.db
+
 # Node / Next.js
 node_modules/
 .next/
