@@ -6,11 +6,18 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite",
+    "asyncpg",
+    "pydantic-settings",
+    "openai>=1.40",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-asyncio",
+    "httpx",
     "ruff",
 ]
 
@@ -22,11 +29,11 @@ select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-# No package code yet — placeholder scaffold so CI can run tests.
-py-modules = []
+[tool.setuptools.packages.find]
+include = ["app*"]
