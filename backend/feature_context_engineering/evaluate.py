@@ -8,7 +8,11 @@ behavioral correctness/efficiency deltas are too noisy for a single live run (ke
 
 from __future__ import annotations
 
-from feature_context_engineering.judge import COVERAGE_WEIGHT, coverage_dimension
+from feature_context_engineering.judge import (
+    COVERAGE_WEIGHT,
+    DEFAULT_COVERAGE_RUNS,
+    coverage_consensus,
+)
 from feature_context_engineering.models import (
     CriterionResult,
     DimensionScore,
@@ -28,15 +32,21 @@ def build_report(
     project: Project,
     submission: Submission,
     client: LLMClient | None = None,
+    coverage_runs: int = DEFAULT_COVERAGE_RUNS,
 ) -> EvaluationReport:
-    """Score the submission across the four axes and return the weighted composite."""
+    """Score the submission across the four axes and return the weighted composite.
+
+    When a client is available the coverage judge runs ``coverage_runs`` times and each
+    criterion's verdict is a majority vote (see ``coverage_consensus``), so a noisy judge
+    can't swing a borderline criterion on a single roll.
+    """
 
     grounding = grounding_dimension(project, submission)
     efficiency = efficiency_dimension(submission)
 
     results: list[CriterionResult] = []
     if client is not None:
-        coverage, results = coverage_dimension(client, project, submission)
+        coverage, results = coverage_consensus(client, project, submission, runs=coverage_runs)
         boundary = boundary_dimension(client, project, submission)
     else:
         coverage = DimensionScore(

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 
+from app.judge.consensus import tally
 from feature_context_engineering.models import (
     ComponentScore,
     Criterion,
@@ -162,6 +163,66 @@ def coverage_dimension(
         score=coverage_score(list(verdicts.values()), criteria),
         weight=COVERAGE_WEIGHT,
         detail=f"{covered}/{len(criteria)} 충족",
+    )
+    return dim, results
+
+
+DEFAULT_COVERAGE_RUNS = 3
+
+
+def coverage_consensus(
+    client: LLMClient,
+    project: Project,
+    submission: Submission,
+    criteria: list[Criterion] | None = None,
+    runs: int = DEFAULT_COVERAGE_RUNS,
+) -> tuple[DimensionScore, list[CriterionResult]]:
+    """Coverage axis with consensus: judge ``runs`` times and majority-vote each criterion.
+
+    Per-criterion ``agreement`` (share of runs backing the majority verdict) is surfaced as a
+    confidence signal — a low value flags a criterion the judge keeps flip-flopping on. The
+    dimension score is computed on the majority verdicts; ``runs=1`` reduces to a single call.
+    """
+
+    criteria = criteria if criteria is not None else get_rubric(project.id)
+    runs = max(1, runs)
+    samples = [
+        {v.id: v for v in judge_submission(client, project, submission, criteria)}
+        for _ in range(runs)
+    ]
+
+    majority: list[CriterionVerdict] = []
+    results: list[CriterionResult] = []
+    agreements: list[float] = []
+    for c in criteria:
+        votes = [(s[c.id].covered if c.id in s else False) for s in samples]
+        decision = tally(votes)
+        covered = bool(decision.winner)
+        agreements.append(decision.agreement)
+        evidence = next(
+            (s[c.id].evidence for s in samples if c.id in s and s[c.id].covered == covered),
+            "",
+        )
+        majority.append(CriterionVerdict(id=c.id, covered=covered, evidence=evidence))
+        results.append(
+            CriterionResult(
+                id=c.id,
+                text=c.text,
+                category=c.category,
+                covered=covered,
+                evidence=evidence,
+                agreement=round(decision.agreement, 4),
+            )
+        )
+
+    covered_n = sum(1 for r in results if r.covered)
+    mean_agreement = round(sum(agreements) / len(agreements), 4) if agreements else 1.0
+    dim = DimensionScore(
+        key="coverage",
+        label="컨벤션·모호성 커버리지",
+        score=coverage_score(majority, criteria),
+        weight=COVERAGE_WEIGHT,
+        detail=f"{covered_n}/{len(criteria)} 충족 · {runs}회 합의 {round(mean_agreement * 100)}%",
     )
     return dim, results
 
