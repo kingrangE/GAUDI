@@ -1,0 +1,99 @@
+[
+  {
+    "key": "td-full",
+    "matched_ids": [
+      "cmd-run",
+      "cmd-test",
+      "struct-routes",
+      "struct-models",
+      "conv-inmem-tests",
+      "conv-settings-env",
+      "conv-404",
+      "bound-secrets"
+    ],
+    "recall": 1.0
+  },
+  {
+    "key": "td-mid",
+    "matched_ids": [
+      "cmd-run",
+      "cmd-test",
+      "struct-routes",
+      "struct-models",
+      "conv-404"
+    ],
+    "recall": 0.625
+  },
+  {
+    "key": "td-thin",
+    "matched_ids": [
+      "cmd-run",
+      "cmd-test"
+    ],
+    "recall": 0.25
+  },
+  {
+    "key": "bd-full",
+    "matched_ids": [
+      "cmd-run",
+      "cmd-test",
+      "struct-routers",
+      "conv-orm-schema-split",
+      "conv-201",
+      "conv-404",
+      "conv-pagination",
+      "conv-inmem-tests",
+      "bound-secrets"
+    ],
+    "recall": 1.0
+  },
+  {
+    "key": "bd-mid",
+    "matched_ids": [
+      "cmd-run",
+      "cmd-test",
+      "struct-routers",
+      "conv-201",
+      "conv-404"
+    ],
+    "recall": 0.5556
+  },
+  {
+    "key": "bd-thin",
+    "matched_ids": [
+      "cmd-run",
+      "cmd-test"
+    ],
+    "recall": 0.2222
+  },
+  {
+    "key": "wk-full",
+    "matched_ids": [
+      "cmd-dev",
+      "struct-components",
+      "conv-state-hook",
+      "conv-no-backend",
+      "conv-columns",
+      "conv-ts",
+      "bound-no-api"
+    ],
+    "recall": 1.0
+  },
+  {
+    "key": "wk-mid",
+    "matched_ids": [
+      "cmd-dev",
+      "struct-components",
+      "conv-columns",
+      "conv-ts"
+    ],
+    "recall": 0.5714
+  },
+  {
+    "key": "wk-thin",
+    "matched_ids": [
+      "cmd-dev"
+    ],
+    "recall": 0.1429
+  }
+]

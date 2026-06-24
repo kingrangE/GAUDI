@@ -26,6 +26,7 @@ from app.features.test_design.harness_adapter import TestDesignAdapter
 from app.harness import agreement, bias_position, bias_self_pref, consistency
 from app.harness.registry import HarnessTarget, get_target, list_targets, register_target
 from app.harness.report import write_report
+from feature_context_engineering.harness_adapter import ContextEngAdapter
 
 
 @dataclass
@@ -121,6 +122,17 @@ register_target(
         name="test_design",
         make_adapter=lambda model: TestDesignAdapter(model=model),
         fixtures_dir=_TEST_DESIGN_FIXTURES,
+    )
+)
+
+_CONTEXT_ENG_FIXTURES = (
+    Path(__file__).resolve().parents[2] / "feature_context_engineering" / "fixtures"
+)
+register_target(
+    HarnessTarget(
+        name="context_engineering",
+        make_adapter=lambda model: ContextEngAdapter(model),
+        fixtures_dir=_CONTEXT_ENG_FIXTURES,
     )
 )
 
