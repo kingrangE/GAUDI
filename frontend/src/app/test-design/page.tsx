@@ -1,44 +1,65 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { CodeMeta, CodePanel } from "@/components/ui/CodePanel";
 import { Panel } from "@/components/ui/Panel";
 import { SectionLabel } from "@/components/ui/SectionLabel";
+import { getUserCode } from "@/lib/accessCodes";
+import { DIFFICULTY_ORDER, difficultyLabel } from "@/lib/difficulty";
 import { FlawListInput } from "../../components/FlawListInput";
 import { ProblemView } from "../../components/ProblemView";
-import { ProgressBar } from "../../components/ProgressBar";
 import { Timer } from "../../components/Timer";
 import { createSession, submitProblem } from "../../lib/api";
 import type { ProblemPublic } from "../../lib/types";
 
 export default function TestDesignPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [problems, setProblems] = useState<ProblemPublic[]>([]);
-  const [index, setIndex] = useState(0);
-  const [flaws, setFlaws] = useState<string[]>([""]);
+  const [selected, setSelected] = useState(0);
+  // Answers and submitted-state are kept per problem index so switching
+  // problems via the dropdown never loses what the candidate typed.
+  const [answers, setAnswers] = useState<Record<number, string[]>>({});
+  const [submitted, setSubmitted] = useState<Record<number, boolean>>({});
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function start() {
-    setBusy(true);
-    setError(null);
-    try {
-      const session = await createSession(name.trim());
-      setSessionId(session.session_id);
-      setProblems(session.problems);
-      setIndex(0);
-      setFlaws([""]);
-    } catch {
-      setError("세션을 시작하지 못했습니다. 백엔드가 실행 중인지 확인하세요.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  // The candidate is already identified by the entry code, so start the
+  // session automatically on entry — no name prompt.
+  useEffect(() => {
+    let active = true;
+    createSession(getUserCode() ?? "anonymous")
+      .then((session) => {
+        if (!active) return;
+        setSessionId(session.session_id);
+        setProblems(session.problems);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setError("세션을 시작하지 못했습니다. 백엔드가 실행 중인지 확인하세요.");
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Group problems into difficulty tiers for the <optgroup> picker.
+  const groups = useMemo(
+    () =>
+      DIFFICULTY_ORDER.map((d) => ({
+        difficulty: d as string,
+        items: problems.filter((p) => p.difficulty === d),
+      })).filter((g) => g.items.length > 0),
+    [problems],
+  );
+
+  const flaws = answers[selected] ?? [""];
+  const setFlaws = (next: string[]) => setAnswers((prev) => ({ ...prev, [selected]: next }));
 
   async function submitCurrent() {
     if (!sessionId) return;
@@ -47,13 +68,8 @@ export default function TestDesignPage() {
     setBusy(true);
     setError(null);
     try {
-      await submitProblem(sessionId, index, cleaned);
-      if (index + 1 >= problems.length) {
-        router.push(`/test-design/result/${sessionId}`);
-      } else {
-        setIndex(index + 1);
-        setFlaws([""]);
-      }
+      await submitProblem(sessionId, selected, cleaned);
+      setSubmitted((prev) => ({ ...prev, [selected]: true }));
     } catch {
       setError("채점 제출에 실패했습니다. 잠시 후 다시 시도하세요.");
     } finally {
@@ -61,75 +77,89 @@ export default function TestDesignPage() {
     }
   }
 
-  // -- Start screen ----------------------------------------------------------
-  if (!sessionId) {
-    return (
-      <div className="py-8">
-        <p className="text-sm font-semibold text-brand-600">테스트 설계</p>
-        <h1 className="mt-1 text-2xl font-bold text-ink-900">테스트 설계 평가</h1>
-        <p className="mt-2 text-ink-soft">
-          주어진 코드의 숨은 결함을 찾아내는 검증 역량을 평가합니다. 총 5개의 코드 문제가
-          출제됩니다.
-        </p>
-        <Panel className="mt-6">
-          <label htmlFor="candidate" className="block text-sm font-medium text-ink-soft">
-            응시자 이름
-          </label>
-          <input
-            id="candidate"
-            type="text"
-            value={name}
-            placeholder="응시자 이름"
-            aria-label="응시자 이름"
-            onChange={(e) => setName(e.target.value)}
-            className="mt-2 w-full max-w-md rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-          />
-          <div className="mt-4">
-            <Button disabled={busy || name.trim().length === 0} onClick={start}>
-              {busy ? "시작 중…" : "시작"}
-            </Button>
-          </div>
-          {error ? <p className="mt-3 text-sm text-bad-600">{error}</p> : null}
-        </Panel>
-      </div>
-    );
+  if (loading) {
+    return <p className="py-8 text-ink-soft">평가를 준비하는 중…</p>;
+  }
+  if (problems.length === 0) {
+    return <p className="py-8 text-bad-600">{error ?? "문제를 불러오지 못했습니다."}</p>;
   }
 
-  // -- Per-problem session ---------------------------------------------------
-  const problem = problems[index];
+  const problem = problems[selected];
+  const submittedCount = Object.values(submitted).filter(Boolean).length;
   const cleanedCount = flaws.map((f) => f.trim()).filter(Boolean).length;
-  const isLast = index + 1 >= problems.length;
+  const isSubmitted = Boolean(submitted[selected]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink-900">테스트 설계 평가</h1>
+    <div className="space-y-4 py-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-brand-600">테스트 설계</p>
+          <h1 className="text-xl font-bold text-ink-900">테스트 설계 평가</h1>
+        </div>
         <Timer />
       </div>
-      <ProgressBar current={index + 1} total={problems.length} />
 
-      <div className="grid h-[calc(100vh-12rem)] grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
-        {/* Left — problem brief */}
+      <Panel className="flex flex-wrap items-center justify-between gap-3">
+        <label htmlFor="problem-picker" className="flex items-center gap-2 text-sm">
+          <span className="font-medium text-ink-900">문제 선택</span>
+          <select
+            id="problem-picker"
+            aria-label="문제 선택"
+            value={selected}
+            onChange={(e) => setSelected(Number(e.target.value))}
+            className="rounded-md border border-line bg-paper px-3 py-1.5 font-mono text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          >
+            {groups.map((g) => (
+              <optgroup key={g.difficulty} label={difficultyLabel(g.difficulty)}>
+                {g.items.map((p) => (
+                  <option key={p.id} value={p.index}>
+                    {submitted[p.index] ? "✓ " : ""}
+                    {p.title}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-center gap-3 text-sm text-ink-soft">
+          <span>
+            제출 {submittedCount}/{problems.length}
+          </span>
+          <Button
+            variant="secondary"
+            disabled={submittedCount === 0}
+            onClick={() => router.push(`/test-design/result/${sessionId}`)}
+          >
+            결과 보기
+          </Button>
+        </div>
+      </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        {/* Left — the prose scenario to verify */}
         <Panel className="min-h-0 overflow-y-auto">
           <ProblemView problem={problem} />
         </Panel>
 
-        {/* Center — code under review (dark) */}
-        <CodePanel label="CODE UNDER REVIEW" meta={<CodeMeta>python</CodeMeta>} code={problem.code} />
-
-        {/* Right — flaw input */}
+        {/* Right — verification items */}
         <Panel className="flex min-h-0 flex-col">
-          <SectionLabel>발견한 결함</SectionLabel>
+          <SectionLabel>검증 항목</SectionLabel>
           <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-            코드가 명세를 어기는 지점·경계 상황을 한 항목씩 서술하세요.
+            이 기능 구현에서 반드시 확인·검증해야 할 항목을 한 줄에 하나씩 적으세요.
           </p>
           <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
             <FlawListInput flaws={flaws} onChange={setFlaws} />
           </div>
-          <div className="mt-3 flex items-center justify-between">
-            {error ? <span className="text-sm text-bad-600">{error}</span> : <span />}
+          <div className="mt-4 flex items-center justify-between gap-2">
+            {error ? (
+              <span className="text-sm text-bad-600">{error}</span>
+            ) : isSubmitted ? (
+              <span className="text-sm text-good-600">제출됨 — 다시 제출하면 갱신됩니다.</span>
+            ) : (
+              <span />
+            )}
             <Button disabled={busy || cleanedCount === 0} onClick={submitCurrent}>
-              {busy ? "제출 중…" : isLast ? "제출하고 결과 보기" : "제출하고 다음 문제"}
+              {busy ? "제출 중…" : isSubmitted ? "다시 제출" : "제출"}
             </Button>
           </div>
         </Panel>

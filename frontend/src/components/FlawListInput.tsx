@@ -18,14 +18,14 @@ export function FlawListInput({ flaws, onChange }: Props) {
           <input
             type="text"
             value={flaw}
-            placeholder={`발견한 결함 ${i + 1}`}
-            aria-label={`발견한 결함 ${i + 1}`}
+            placeholder={`검증 항목 ${i + 1}`}
+            aria-label={`검증 항목 ${i + 1}`}
             onChange={(e: ChangeEvent<HTMLInputElement>) => updateAt(i, e.target.value)}
             className="flex-1 rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           <button
             type="button"
-            aria-label={`결함 ${i + 1} 삭제`}
+            aria-label={`검증 항목 ${i + 1} 삭제`}
             onClick={() => removeAt(i)}
             className="rounded-lg px-2 py-1 text-sm text-ink-faint hover:text-bad-600"
           >
@@ -38,7 +38,7 @@ export function FlawListInput({ flaws, onChange }: Props) {
         onClick={addOne}
         className="text-sm font-medium text-brand-600 hover:text-brand-700"
       >
-        + 결함 추가
+        + 검증 항목 추가
       </button>
     </div>
   );

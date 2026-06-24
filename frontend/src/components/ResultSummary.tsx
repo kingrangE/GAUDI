@@ -13,7 +13,7 @@ export function ResultSummary({ result }: { result: ResultResponse }) {
         <Badge tone="good">{result.status}</Badge>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <Metric label="결함 발견율 (Recall)" value={pct(result.recall)} />
+        <Metric label="검증 항목 발견율 (Recall)" value={pct(result.recall)} />
         <Metric label="정밀도 (Precision)" value={pct(result.precision)} />
         <Metric label="가중 점수" value={pct(result.weighted_score)} />
       </div>
