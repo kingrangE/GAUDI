@@ -1,5 +1,5 @@
 {
-  "_note": "Placeholder OpenAI model ids — edit to the GPT models you actually want to sweep. Self-preference bias is measured across these.",
+  "_note": "Real OpenAI model ids to sweep for the self-preference analysis (each judges every synthetic submission). Keep these consistent with the centralized app/core/config.py `llm_model`; `author_model` values in synthetic_submissions.json must be drawn from `author_models`. Self-preference needs real multi-model calls (OPENAI_API_KEY) — it is the optional part of the harness.",
   "judge_models": ["gpt-4o-mini", "gpt-4o"],
   "author_models": ["gpt-4o-mini", "gpt-4o"]
 }

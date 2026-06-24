@@ -160,3 +160,70 @@ async def test_self_preference_bias_surfaces():
     res = await run_self_preference(adapters, synthetic, human)
     assert res["judges"]["mini"]["self_preference"] == pytest.approx(1.0)
     assert res["judges"]["big"]["self_preference"] == pytest.approx(1.0)
+
+
+# --- end-to-end wiring: real TestDesignAdapter + fixtures, judge LLM mocked ---
+# Proves the whole evaluation pipeline (fixtures -> adapter -> scoring -> analyses)
+# runs without an API key, so the harness stays runnable/green in CI.
+
+
+@pytest.fixture
+def stub_td_judge(monkeypatch):
+    """Patch test_design's judge so the adapter runs deterministically (no LLM):
+    match the first ground-truth flaw via candidate 0, and always prefer 'A'."""
+    from app.features.test_design import harness_adapter
+    from app.features.test_design.schemas import JudgeMatch, JudgeOutput, PairwiseVerdict
+
+    async def fake_submission(problem, flaws, model=None):
+        matches = [
+            JudgeMatch(
+                ground_truth_id=f.id,
+                matched=(i == 0),
+                candidate_index=0 if i == 0 else None,
+                quality=2 if i == 0 else 0,
+            )
+            for i, f in enumerate(problem.flaws)
+        ]
+        return JudgeOutput(matches=matches, report="stub")
+
+    async def fake_pairwise(problem, flaws_a, flaws_b, model=None):
+        return PairwiseVerdict(winner="A", reason="stub")
+
+    monkeypatch.setattr(harness_adapter, "judge_submission", fake_submission)
+    monkeypatch.setattr(harness_adapter, "judge_pairwise", fake_pairwise)
+
+
+async def test_harness_pipeline_runs_over_real_fixtures(stub_td_judge):
+    from app.features.test_design.harness_adapter import TestDesignAdapter
+    from app.harness.runner import _build_pairs, _load
+
+    synthetic = _load("synthetic_submissions.json")
+    gold_labels = {g["key"]: g for g in _load("human_gold.json")}
+    adapter = TestDesignAdapter()
+
+    items = [{"problem_index": s["problem_index"], "flaws": s["flaws"]} for s in synthetic]
+    gold = [
+        {
+            "problem_index": s["problem_index"],
+            "flaws": s["flaws"],
+            "human": {
+                "matched_ids": gold_labels[s["key"]]["matched_ids"],
+                "recall": gold_labels[s["key"]]["recall"],
+            },
+        }
+        for s in synthetic
+    ]
+
+    consistency = await run_consistency(adapter, items[:2], runs=2)
+    assert consistency["items"][0]["runs"] == 2
+    # the stub judge is deterministic -> no run-to-run variance
+    assert consistency["high_variance_count"] == 0
+
+    agreement = await run_agreement(adapter, gold[:3])
+    assert agreement["n_items"] == 3
+    assert -1.0 <= agreement["kappa"] <= 1.0
+    assert 0.0 <= agreement["mae_recall"] <= 1.0
+
+    position = await run_position_bias(adapter, _build_pairs(synthetic)[:2])
+    # stub always says 'A' -> ordering flips the winner every time
+    assert position["flip_rate"] == pytest.approx(1.0)
