@@ -9,16 +9,14 @@ import { createSession } from "@/features/rejection-eval/api";
 
 export default function StartPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function start() {
-    if (!name.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const session = await createSession(name.trim());
+      const session = await createSession();
       sessionStorage.setItem(
         `reval:topics:${session.session_id}`,
         JSON.stringify(session.topics),
@@ -35,23 +33,16 @@ export default function StartPage() {
       <p className="text-sm font-semibold text-brand-600">거부 능력</p>
       <h1 className="mt-1 text-2xl font-bold text-ink-900">거부 능력 평가</h1>
       <p className="mt-2 text-ink-soft">
-        고정 주제 3개에 대해 AI에게 설계를 지시하고, AI가 만든 설계 항목 중 잘못된 것을
-        찾아내세요. 정밀도·재현율로 채점됩니다.
+        고정 주제 3개에 대해, 제시된 기능 요구사항을 만족하도록 AI에게 설계를 지시하고,
+        AI가 만든 설계 항목 중 잘못된 것·요구사항에 없는 것을 찾아내세요. 정밀도·재현율로 채점됩니다.
       </p>
 
       <Panel className="mt-6">
-        <label htmlFor="candidate" className="block text-sm font-medium text-ink-soft">
-          응시자 이름
-        </label>
-        <input
-          id="candidate"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="이름을 입력하세요"
-          className="mt-2 w-full max-w-md rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-        />
+        <p className="text-sm text-ink-soft">
+          준비가 되면 평가를 시작하세요. 세 개의 주제를 차례로 진행합니다.
+        </p>
         <div className="mt-4">
-          <Button onClick={start} disabled={loading || !name.trim()}>
+          <Button onClick={start} disabled={loading}>
             {loading ? "시작 중…" : "평가 시작"}
           </Button>
         </div>

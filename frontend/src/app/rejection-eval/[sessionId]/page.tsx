@@ -102,10 +102,22 @@ export default function EvalPage() {
             {topic ? topic.title : `주제 ${topicIndex + 1}`}
           </h1>
           {topic ? <p className="mt-2 text-sm leading-relaxed text-ink-soft">{topic.description}</p> : null}
+
+          {topic && topic.requirements.length > 0 ? (
+            <div className="mt-4">
+              <SectionLabel>기능 요구사항</SectionLabel>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-ink-900">
+                {topic.requirements.map((req, i) => (
+                  <li key={i}>{req}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           <p className="mt-4 rounded-lg bg-paper p-3 text-xs leading-relaxed text-ink-soft">
             {phase === "prompt"
-              ? "AI에게 설계를 지시하는 프롬프트를 작성하세요. 구체적일수록 좋습니다."
-              : "AI가 만든 설계 항목 중 잘못 적용된 기술이나 잘못된 방향성을 모두 거부(체크)하세요."}
+              ? "위 기능 요구사항을 만족하도록 AI에게 설계를 지시하는 프롬프트를 작성하세요."
+              : "AI 설계 항목 중 잘못 적용된 기술·방향성, 그리고 요구사항에 없는 항목을 모두 거부(체크)하세요."}
           </p>
         </Panel>
 
