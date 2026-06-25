@@ -66,7 +66,7 @@ describe("Workspace examMode", () => {
   beforeEach(() => stubFetch([problem, { ...problem, id: "coin-change", title: "동전 교환" }]));
   afterEach(() => vi.unstubAllGlobals());
 
-  it("hides picker and result; calls onExamSubmit with accumulated prompts", async () => {
+  it("runs without submitting, then 제출 sends the accumulated prompts", async () => {
     const onExamSubmit = vi.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(
@@ -81,19 +81,52 @@ describe("Workspace examMode", () => {
     // picker must be absent even though multiple problems are available
     expect(screen.queryByRole("combobox", { name: "문제 선택" })).toBeNull();
 
-    // type a prompt and submit
+    // 실행: runs the judge and shows the agent's code — but does NOT submit.
     await user.type(screen.getByPlaceholderText(/지시하세요/), "배열의 합을 구해줘");
-    await user.click(screen.getByRole("button", { name: "채점 실행" }));
+    await user.click(screen.getByRole("button", { name: "실행" }));
 
-    // onExamSubmit receives the accumulated prompt list
-    await waitFor(() =>
-      expect(onExamSubmit).toHaveBeenCalledWith(["배열의 합을 구해줘"]),
+    const codeRegion = await screen.findByRole("region", { name: "에이전트 코드" });
+    await waitFor(() => expect(codeRegion.textContent).toContain("return sum(nums)"));
+    expect(onExamSubmit).not.toHaveBeenCalled();
+
+    // 실행 alone shows no score and no test ledger yet.
+    expect(screen.queryByText(/맞았습니다/)).toBeNull();
+    expect(screen.queryByLabelText("채점 결과")).toBeNull();
+
+    // 제출: hands the accumulated prompt list to the parent for hidden-case scoring.
+    await user.click(screen.getByRole("button", { name: "제출" }));
+    await waitFor(() => expect(onExamSubmit).toHaveBeenCalledWith(["배열의 합을 구해줘"]));
+  });
+
+  it("테스트 채점 reveals only the public cases (hidden stay reserved for 제출)", async () => {
+    const onExamSubmit = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <Workspace
+        problemId="sum-array"
+        initialProblem={problem}
+        examMode
+        onExamSubmit={onExamSubmit}
+      />,
     );
 
-    // no score / verdict display
+    // 테스트 채점 is disabled until something has been run.
+    expect(screen.getByRole("button", { name: "테스트 채점" })).toBeDisabled();
+
+    await user.type(screen.getByPlaceholderText(/지시하세요/), "배열의 합을 구해줘");
+    await user.click(screen.getByRole("button", { name: "실행" }));
+    await screen.findByRole("region", { name: "에이전트 코드" });
+
+    await user.click(screen.getByRole("button", { name: "테스트 채점" }));
+
+    // solvedResult has 1 public + 2 hidden cases → public-only summary is 1/1,
+    // and the hidden rows must never be rendered to the candidate.
+    const ledger = await screen.findByLabelText("채점 결과");
+    expect(ledger).toHaveTextContent("통과 1/1");
+    expect(ledger.textContent).not.toContain("숨김");
+    // the overall score stays hidden in exam mode
     expect(screen.queryByText(/맞았습니다/)).toBeNull();
-    expect(screen.queryByText(/통과/)).toBeNull();
-    expect(screen.queryByText(/채점 결과가/)).toBeNull();
+    expect(onExamSubmit).not.toHaveBeenCalled();
   });
 });
 
