@@ -26,9 +26,8 @@ class FakeGenClient:
 
 
 def test_generate_samples_runs_n_and_indexes():
-    task = get_task("login-signup")
     client = FakeGenClient()
-    samples = asyncio.run(generate_samples(client, task, "지시", n=5, temperature=1.6))
+    samples = asyncio.run(generate_samples(client, "지시", n=5, temperature=1.6))
 
     assert len(samples) == 5
     assert [s.index for s in samples] == [0, 1, 2, 3, 4]
@@ -37,7 +36,9 @@ def test_generate_samples_runs_n_and_indexes():
     assert client.temperatures == [1.6] * 5
 
 
-def test_generate_samples_includes_brief_and_instruction():
+def test_generate_samples_sends_only_instruction_not_brief():
+    # Linchpin: the generator must see ONLY the candidate's instruction, never the task brief.
+    # Leaking the brief lets the model solve the task regardless of the instruction.
     task = get_task("login-signup")
 
     captured = {}
@@ -47,12 +48,11 @@ def test_generate_samples_includes_brief_and_instruction():
             captured["user"] = user
             return DESIGN
 
-    asyncio.run(generate_samples(Capturing(), task, "PostgreSQL 사용", n=1, temperature=1.0))
-    assert task.brief in captured["user"]
+    asyncio.run(generate_samples(Capturing(), "PostgreSQL 사용", n=1, temperature=1.0))
+    assert task.brief not in captured["user"]
     assert "PostgreSQL 사용" in captured["user"]
 
 
 def test_generate_samples_rejects_nonpositive_n():
-    task = get_task("login-signup")
     with pytest.raises(ValueError):
-        asyncio.run(generate_samples(FakeGenClient(), task, "x", n=0, temperature=1.0))
+        asyncio.run(generate_samples(FakeGenClient(), "x", n=0, temperature=1.0))
