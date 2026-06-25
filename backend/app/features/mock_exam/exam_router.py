@@ -36,13 +36,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.features.mock_exam.models import ExamAttempt, ExamFeatureResult
+
+# rejection_eval
+from app.features.mock_exam.rejection_pool import sample_items as rej_sample_items
 from app.features.mock_exam.service import (
     create_exam_attempt,
     finalize_exam_attempt,
     record_feature_result,
 )
-
-# rejection_eval
 from app.features.rejection_eval import service as rej_service
 from app.features.rejection_eval.models import RejectionAttempt, RejectionSession
 from app.features.rejection_eval.schemas import SubmitRequest as RejSubmitRequest
@@ -438,13 +439,30 @@ async def generate_rejection_items(
 ) -> dict:
     attempt = await _get_attempt_or_404(db, attempt_id)
     await _ensure_rejection_session(db, attempt)
-    resp = await rej_service.generate_for_topic(
-        db, attempt.id, REJECTION_TOPIC_INDEX, body.prompt
+
+    # Hard-coded pool: 20 correct + 0..MAX_FLAWED random flawed items.
+    # No LLM call. Seed = attempt_id for reproducibility (same attempt → same items).
+    items = rej_sample_items(seed=attempt_id)
+
+    # Persist into the rejection attempt row so scoring can read is_flawed later.
+    rej_attempt_result = await db.execute(
+        select(RejectionAttempt).where(
+            RejectionAttempt.session_id == attempt.id,
+            RejectionAttempt.topic_index == REJECTION_TOPIC_INDEX,
+        )
     )
+    rej_attempt = rej_attempt_result.scalar_one_or_none()
+    if rej_attempt is None:
+        raise HTTPException(status_code=409, detail="rejection session not initialised")
+
+    rej_attempt.prompt = body.prompt
+    rej_attempt.generated_items = [item.model_dump() for item in items]
+    await db.commit()
+
     # PublicItem = {id, text} only — is_flawed / explanation stay server-side.
     return {
         "feature_key": "rejection_eval",
-        "items": [item.model_dump() for item in resp.items],
+        "items": [{"id": item.id, "text": item.text} for item in items],
     }
 
 

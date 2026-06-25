@@ -51,6 +51,31 @@ export function RejectionWorkbench({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Exam-mode: auto-generate items from topic requirements on mount ────────
+  useEffect(() => {
+    if (!examMode || !examTopic || !onExamGenerate) return;
+    let active = true;
+    setBusy(true);
+    const autoPrompt = examTopic.requirements.join("\n");
+    onExamGenerate(autoPrompt)
+      .then((generatedItems) => {
+        if (!active) return;
+        setItems(generatedItems);
+        setFlagged([]);
+        setPhase("review");
+      })
+      .catch(() => {
+        if (!active) return;
+        setError("AI 설계 생성에 실패했습니다. 잠시 후 다시 시도하세요.");
+      })
+      .finally(() => {
+        if (active) setBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [examMode, examTopic, onExamGenerate]);
+
   // ── Practice-mode session bootstrap ──────────────────────────────────────
   useEffect(() => {
     if (examMode) return; // exam mode doesn't create its own session
@@ -130,7 +155,10 @@ export function RejectionWorkbench({
     router.push(`/rejection-eval/result/${sessionId}`);
   }
 
-  // ── Loading / error guards (practice mode only) ───────────────────────────
+  // ── Loading / error guards ────────────────────────────────────────────────
+  if (examMode && busy && phase === "prompt") {
+    return <p className="py-8 text-ink-soft">AI 설계 항목을 불러오는 중…</p>;
+  }
   if (!examMode && loading) {
     return <p className="py-8 text-ink-soft">평가를 준비하는 중…</p>;
   }
