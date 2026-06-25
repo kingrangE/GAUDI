@@ -14,11 +14,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  // Logo returns to the menu-selection hub (not the entry-code gate, which would
+  // force the visitor to re-enter their code). Admin pages return to /admin.
+  const homeHref = pathname.startsWith("/admin") ? "/admin" : "/user";
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
         <div className="flex h-[52px] w-full items-center gap-4 px-5">
-          <Link href="/" className="flex items-center gap-2 font-bold tracking-tight text-ink-900">
+          <Link href={homeHref} className="flex items-center gap-2 font-bold tracking-tight text-ink-900">
             <span className="grid h-6 w-6 place-items-center rounded bg-brand-600 text-xs font-bold text-white">
               &amp;
             </span>
