@@ -23,7 +23,7 @@ export default function UserHubPage() {
   return (
     <div className="py-10">
       <section>
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-600">and·you · 응시자</p>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-600">GAUDI · 응시자</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink-900">무엇을 진행할까요?</h1>
         <p className="mt-3 max-w-3xl text-ink-soft">
           개별 연습으로 항목을 익히거나, 실전 모의고사로 실제 시험을 대비하세요.

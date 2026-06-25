@@ -6,7 +6,7 @@ import { AppShell } from "@/components/ui/AppShell";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "and-you — AI Agent 역량 평가",
+  title: "GAUDI — AI Agent 역량 평가",
   description: "AI Agent 활용·검증 역량 평가 플랫폼",
 };
 

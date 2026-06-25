@@ -106,7 +106,7 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
-        <span className={styles.brand}>and·you</span>
+        <span className={styles.brand}>GAUDI</span>
         <span className={styles.feature}>PROMPT JUDGE</span>
         {!examMode && problems.length > 1 ? (
           <select

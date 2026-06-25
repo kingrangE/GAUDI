@@ -77,7 +77,7 @@ export function Workbench({ examMode, examTaskId, onExamSubmit }: WorkbenchProps
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
-        <span className={styles.brand}>and·you</span>
+        <span className={styles.brand}>GAUDI</span>
         <span className={styles.feature}>SPEC DESIGN</span>
         <span className={styles.spacer} />
         <span className={styles.topbarNote}>명세 설계 · 답변 일관성</span>
