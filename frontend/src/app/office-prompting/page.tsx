@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -19,11 +19,11 @@ import type {
 
 export default function OfficePromptingPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const [selected, setSelected] = useState(0);
   const [prompts, setPrompts] = useState<Record<number, string>>({});
   const [runs, setRuns] = useState<Record<number, RunResponse>>({});
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,18 +32,25 @@ export default function OfficePromptingPage() {
     return target?.columns ?? [];
   }, [session]);
 
-  async function onStart() {
-    if (!name.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      setSession(await createSession(name.trim()));
-    } catch {
-      setError("세션을 시작하지 못했습니다. 백엔드가 실행 중인지 확인하세요.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  // The candidate is identified by the entry gate, so start the session
+  // automatically — no name prompt.
+  useEffect(() => {
+    let active = true;
+    createSession()
+      .then((s) => {
+        if (!active) return;
+        setSession(s);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setError("세션을 시작하지 못했습니다. 백엔드가 실행 중인지 확인하세요.");
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function onRun() {
     if (!session) return;
@@ -66,32 +73,15 @@ export default function OfficePromptingPage() {
     router.push(`/office-prompting/result/${session.session_id}`);
   }
 
-  // --- entry: collect candidate name ---------------------------------------
+  // --- entry: auto-start, no name prompt -----------------------------------
+  if (loading) {
+    return <p className="py-8 text-ink-soft">평가를 준비하는 중…</p>;
+  }
   if (!session) {
     return (
-      <div className="space-y-4 py-6">
-        <div>
-          <p className="text-sm font-semibold text-brand-600">사무직 Prompting</p>
-          <h1 className="text-xl font-bold text-ink-900">데이터 분석 프롬프팅 평가</h1>
-        </div>
-        <Panel className="max-w-md space-y-3">
-          <SectionLabel>응시자</SectionLabel>
-          <p className="text-sm text-ink-soft">
-            여러 표(CSV)를 조합해야 풀리는 문제 3개가 주어집니다. 각 문제에서 AI에게
-            보낼 프롬프트를 작성해, 조건을 만족하는 고객을 정확히 찾아내세요.
-          </p>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="이름"
-            className="w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-          />
-          <Button onClick={onStart} disabled={busy || !name.trim()}>
-            {busy ? "준비 중…" : "평가 시작"}
-          </Button>
-          {error ? <p className="text-sm text-bad-600">{error}</p> : null}
-        </Panel>
-      </div>
+      <p className="py-8 text-bad-600">
+        {error ?? "세션을 시작하지 못했습니다."}
+      </p>
     );
   }
 

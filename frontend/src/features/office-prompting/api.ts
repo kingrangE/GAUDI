@@ -15,7 +15,9 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function createSession(candidateName: string): Promise<CreateSessionResponse> {
+// Anonymous by default: the entry gate handles identity, so the page starts a
+// session without prompting for a name. Backend requires a non-empty name.
+export function createSession(candidateName = "익명"): Promise<CreateSessionResponse> {
   return request("/api/office-prompting/sessions", { candidate_name: candidateName });
 }
 
