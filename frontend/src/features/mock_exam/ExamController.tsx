@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
@@ -42,7 +42,7 @@ const DEFAULT_FLOW: FeatureKey[] = [
 
 const SESSION_KEY = "mockExam:attemptId";
 
-type Phase = "intro" | "loading" | "exam" | "done";
+type Phase = "intro" | "loading" | "exam" | "finishing" | "done";
 
 interface StepMaterial {
   feature_key: FeatureKey;
@@ -58,6 +58,10 @@ export function ExamController() {
   const [currentStep, setCurrentStep] = useState<FeatureKey | null>(null);
   const [stepMaterial, setStepMaterial] = useState<StepMaterial | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [failedSteps, setFailedSteps] = useState<FeatureKey[]>([]);
+  // In-flight background scoring requests. The user advances without awaiting
+  // these; the final step waits for all of them before finalizing the score.
+  const pendingRef = useRef<Promise<unknown>[]>([]);
 
   const loadMaterial = useCallback(async (id: string, step: FeatureKey) => {
     const m = (await mockExamApi.getStepMaterial(id, step)) as unknown as StepMaterial;
@@ -114,29 +118,42 @@ export function ExamController() {
     }
   }, [loadMaterial]);
 
-  // Submit the current step's input → record server-side (score hidden) → advance.
+  // Submit the current step's input, then advance IMMEDIATELY — the server-side
+  // LLM scoring is slow, so we fire it in the background instead of awaiting it.
+  // The next step is derived from the locally-known `flow` (no need for the
+  // server's `next_step`), so the candidate never waits between problems.
   const handleSubmit = useCallback(
     async (feature: FeatureKey, input: unknown) => {
       if (!attemptId) return;
       setError(null);
-      try {
-        const res = await mockExamApi.submitStep(attemptId, feature, input);
-        setCompletedSteps((prev) => (prev.includes(feature) ? prev : [...prev, feature]));
-        const next = res.next_step as FeatureKey | null | undefined;
-        if (!next) {
-          await mockExamApi.finish(attemptId);
-          sessionStorage.removeItem(SESSION_KEY);
-          setPhase("done");
-        } else {
-          setCurrentStep(next);
-          await loadMaterial(attemptId, next);
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        throw e; // let the step component reset its own submitting state
+
+      // Fire scoring in the background. Swallow failures into `failedSteps` so a
+      // single failed step can't reject the Promise.allSettled at finish time.
+      const pending = mockExamApi.submitStep(attemptId, feature, input).catch(() => {
+        setFailedSteps((prev) => (prev.includes(feature) ? prev : [...prev, feature]));
+      });
+      pendingRef.current.push(pending);
+
+      setCompletedSteps((prev) => (prev.includes(feature) ? prev : [...prev, feature]));
+
+      const idx = flow.indexOf(feature);
+      const next = idx >= 0 && idx + 1 < flow.length ? flow[idx + 1] : null;
+
+      if (!next) {
+        // Last step: wait for every background scoring to land so finalize can
+        // average a complete set of feature scores, then close out the exam.
+        setPhase("finishing");
+        await Promise.allSettled(pendingRef.current);
+        pendingRef.current = [];
+        await mockExamApi.finish(attemptId);
+        sessionStorage.removeItem(SESSION_KEY);
+        setPhase("done");
+      } else {
+        setCurrentStep(next);
+        await loadMaterial(attemptId, next);
       }
     },
-    [attemptId, loadMaterial],
+    [attemptId, flow, loadMaterial],
   );
 
   const generateRejection = useCallback(
@@ -181,6 +198,14 @@ export function ExamController() {
     );
   }
 
+  if (phase === "finishing") {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <span className="text-ink-soft">제출을 채점하는 중…</span>
+      </div>
+    );
+  }
+
   if (phase === "done") {
     return (
       <div className="flex min-h-[60vh] items-center justify-center py-10">
@@ -190,6 +215,11 @@ export function ExamController() {
           <p className="mt-3 text-sm text-ink-soft">
             제출이 완료되었습니다. 점수와 평가는 관리자가 확인합니다.
           </p>
+          {failedSteps.length > 0 && (
+            <p className="mt-3 rounded border border-warn-100 bg-warn-50 px-3 py-2 text-sm text-warn-600">
+              일부 단계 채점에 실패했습니다. 관리자가 확인합니다.
+            </p>
+          )}
         </Panel>
       </div>
     );
