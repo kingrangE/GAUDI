@@ -27,6 +27,10 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Exam-only: whether the public test ledger is revealed, and whether a final
+  // 제출 (hidden-case scoring) is in flight.
+  const [showTests, setShowTests] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Load the problem list for the picker (best effort). Skipped in exam mode.
   useEffect(() => {
@@ -76,23 +80,48 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
     setPrompts([]);
     setResult(null);
     setError(null);
+    setShowTests(false);
   }
 
-  async function handleSubmit(prompt: string) {
+  // 실행: add the prompt as a new turn and run it through the judge so the
+  // candidate sees the agent's code. In exam mode this is *not* the submission —
+  // the final score comes from 제출 below. (Practice mode also routes here.)
+  async function handleRun(prompt: string) {
     const next = [...prompts, prompt];
     setPrompts(next);
     setRunning(true);
+    setShowTests(false); // a fresh run invalidates the previously revealed ledger
     setError(null);
     try {
-      if (examMode) {
-        if (onExamSubmit) await onExamSubmit(next);
-      } else {
-        setResult(await runEvaluation(currentId, next));
-      }
+      setResult(await runEvaluation(currentId, next));
     } catch {
-      setError("채점에 실패했습니다. 백엔드 연결을 확인하세요.");
+      setError(
+        examMode
+          ? "실행에 실패했습니다. 백엔드 연결을 확인하세요."
+          : "채점에 실패했습니다. 백엔드 연결을 확인하세요.",
+      );
     } finally {
       setRunning(false);
+    }
+  }
+
+  // 테스트 채점: reveal the public (visible) test-case results for the latest run.
+  function handleGradeTests() {
+    if (!result) return;
+    setShowTests(true);
+  }
+
+  // 제출: hand the accumulated prompts to the parent for the hidden-case (final)
+  // scoring. On success the exam controller advances and unmounts us.
+  async function handleFinalSubmit() {
+    if (!onExamSubmit || prompts.length === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onExamSubmit(prompts);
+    } catch {
+      setError("제출에 실패했습니다. 다시 시도해주세요.");
+      setSubmitting(false);
     }
   }
 
@@ -129,12 +158,17 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
         <ProblemPane problem={problem} />
         <CodePane code={latestTurn?.code ?? problem.starter_code} turn={latestTurn?.turn ?? null} />
         <PromptPane
-          onSubmit={handleSubmit}
+          onSubmit={handleRun}
           running={running}
           latestTurn={latestTurn}
           result={result}
           error={error}
           examMode={examMode}
+          onGradeTests={handleGradeTests}
+          onFinalSubmit={handleFinalSubmit}
+          showTests={showTests}
+          submitting={submitting}
+          hasRun={result !== null}
         />
       </main>
     </div>

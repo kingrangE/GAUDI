@@ -323,6 +323,44 @@
   cursor: not-allowed;
 }
 
+/* exam controls: 실행 (primary) · 테스트 채점 (neutral) · 제출 (terminal) */
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.secondaryButton,
+.submitButton {
+  align-self: flex-start;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secondaryButton {
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--ink);
+}
+.secondaryButton:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.submitButton {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+}
+.submitButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.secondaryButton:disabled,
+.submitButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .error {
   font-size: 13px;
   color: var(--wa);
