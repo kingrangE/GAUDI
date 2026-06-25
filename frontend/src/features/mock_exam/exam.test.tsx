@@ -114,4 +114,42 @@ describe("ExamController", () => {
     expect(document.body.textContent ?? "").not.toMatch(/\d+\s*점/);
     await waitFor(() => expect(api.submitStep).toHaveBeenCalledTimes(5));
   });
+
+  it("advances to the next step without awaiting the (slow) evaluation", async () => {
+    // The first step's scoring never resolves during this test, proving the
+    // controller does not block on it before showing the next problem.
+    api.submitStep.mockImplementationOnce(() => new Promise(() => {}));
+
+    render(<ExamController />);
+    fireEvent.click(screen.getByRole("button", { name: "시험 시작" }));
+    fireEvent.click(await screen.findByText("step-context"));
+
+    // Next step rendered even though step 1's evaluation is still in flight.
+    expect(await screen.findByText("step-spec")).toBeInTheDocument();
+  });
+
+  it("waits for in-flight scoring before finishing on the last step", async () => {
+    // Hang the first step's scoring; the candidate still walks through every
+    // step, but the final "finish" must wait until that scoring lands.
+    let resolveFirst!: (value: unknown) => void;
+    const firstPending = new Promise((res) => {
+      resolveFirst = res;
+    });
+    api.submitStep.mockImplementationOnce(() => firstPending);
+
+    render(<ExamController />);
+    fireEvent.click(screen.getByRole("button", { name: "시험 시작" }));
+    for (const label of ["step-context", "step-spec", "step-rejection", "step-test", "step-dev"]) {
+      fireEvent.click(await screen.findByText(label));
+    }
+
+    // On the last step we enter the grading gate and must NOT finalize yet.
+    expect(await screen.findByText("제출을 채점하는 중…")).toBeInTheDocument();
+    expect(api.finish).not.toHaveBeenCalled();
+
+    // Let the stuck scoring land → the exam closes out.
+    resolveFirst({ recorded: true, next_step: "spec_design" });
+    expect(await screen.findByText("수고하셨습니다")).toBeInTheDocument();
+    expect(api.finish).toHaveBeenCalledWith("att1");
+  });
 });
