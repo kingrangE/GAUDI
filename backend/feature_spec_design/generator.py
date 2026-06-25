@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
-from feature_spec_design.models import Sample, SpecTask
+from feature_spec_design.models import Sample
 from llm.client import LLMClient
 
 SYSTEM_PROMPT = (
@@ -21,15 +21,19 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_user_prompt(task: SpecTask, instruction: str) -> str:
-    """Compose the message the generator sees: the brief plus the candidate's instruction."""
+def build_user_prompt(instruction: str) -> str:
+    """Compose the message the generator sees: ONLY the candidate's instruction.
 
-    return f"# 과제\n{task.brief}\n\n# 사용자 지시\n{instruction}"
+    The task brief is deliberately withheld — the instruction is the thing being evaluated,
+    so it must carry everything the model needs. A vague instruction (or junk like "asd")
+    leaves the model nothing to build, which is exactly what should score low.
+    """
+
+    return f"# 사용자 지시\n{instruction}"
 
 
 async def generate_samples(
     client: LLMClient,
-    task: SpecTask,
     instruction: str,
     *,
     n: int,
@@ -45,7 +49,7 @@ async def generate_samples(
         raise ValueError("n must be positive")
 
     system = SYSTEM_PROMPT
-    user = build_user_prompt(task, instruction)
+    user = build_user_prompt(instruction)
 
     async def one() -> str:
         return await asyncio.to_thread(client.complete, system, user, temperature=temperature)

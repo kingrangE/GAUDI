@@ -39,7 +39,7 @@ async def evaluate(
     temperature = temperature if temperature is not None else get_gen_settings().temperature
 
     samples = await generate_samples(
-        gen_client, task, instruction, n=n, temperature=temperature
+        gen_client, instruction, n=n, temperature=temperature
     )
     requirements, dimensions, overengineering = await analyze(
         samples,
