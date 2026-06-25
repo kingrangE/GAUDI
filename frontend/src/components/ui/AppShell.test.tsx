@@ -43,7 +43,7 @@ describe("AppShell", () => {
         <p>child content</p>
       </AppShell>,
     );
-    expect(screen.getByRole("link", { name: /and·you/ })).toHaveAttribute("href", "/user");
+    expect(screen.getByRole("link", { name: /GAUDI/ })).toHaveAttribute("href", "/user");
   });
 
   it("points the logo at /admin while inside the admin area", () => {
@@ -53,6 +53,6 @@ describe("AppShell", () => {
         <p>child content</p>
       </AppShell>,
     );
-    expect(screen.getByRole("link", { name: /and·you/ })).toHaveAttribute("href", "/admin");
+    expect(screen.getByRole("link", { name: /GAUDI/ })).toHaveAttribute("href", "/admin");
   });
 });

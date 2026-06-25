@@ -6,6 +6,7 @@ import { useState } from "react";
 import { classifyCode, normalize, setUserCode } from "@/lib/accessCodes";
 
 import { Button } from "./ui/Button";
+import { Logo } from "./ui/Logo";
 
 /** Login-less first screen: route to admin or user area by entry code. */
 export function EntryGate() {
@@ -31,8 +32,13 @@ export function EntryGate() {
   return (
     <div className="grid min-h-screen place-items-center bg-paper px-6">
       <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8 shadow-panel">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-600">and·you · EVAL</p>
-        <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink-900">입장 코드를 입력하세요</h1>
+        <div className="flex items-center gap-2">
+          <Logo size="sm" />
+          <span className="rounded-sm border border-brand-200 px-2 py-[2px] font-mono text-[10px] tracking-[0.18em] text-brand-600">
+            EVAL
+          </span>
+        </div>
+        <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink-900">입장 코드를 입력하세요</h1>
         <p className="mt-2 text-sm text-ink-soft">
           발급받은 코드를 입력하면 해당 페이지로 입장합니다.
         </p>

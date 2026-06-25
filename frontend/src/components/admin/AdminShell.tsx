@@ -31,7 +31,7 @@ export function AdminShell({ active, eyebrow, title, children }: AdminShellProps
         <div className={styles.brand}>
           <div className={styles.brandMark}>A</div>
           <div>
-            <strong>and-you</strong>
+            <strong>GAUDI</strong>
             <span>Evaluation Admin</span>
           </div>
         </div>

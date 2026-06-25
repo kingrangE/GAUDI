@@ -1,4 +1,5 @@
 export { cn } from "./cn";
+export { Logo } from "./Logo";
 export { Panel } from "./Panel";
 export { SectionLabel } from "./SectionLabel";
 export { Button, buttonClasses } from "./Button";

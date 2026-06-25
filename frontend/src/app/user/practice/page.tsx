@@ -88,7 +88,7 @@ export default function PracticePage() {
     <div className="py-10">
       <section>
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-600">
-          개별 연습 · and·you
+          개별 연습 · GAUDI
         </p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink-900">
           AI Agent를 다루고 검증하는 역량을 평가합니다
