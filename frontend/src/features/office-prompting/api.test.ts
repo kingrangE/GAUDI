@@ -26,6 +26,13 @@ describe("office-prompting api", () => {
     expect(JSON.parse(init.body)).toEqual({ candidate_name: "민수" });
   });
 
+  it("createSession falls back to an anonymous name when none is given", async () => {
+    const fetchMock = mockFetch({ session_id: "s1" });
+    await createSession();
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({ candidate_name: "익명" });
+  });
+
   it("runProblem hits the per-problem run endpoint with the prompt", async () => {
     const fetchMock = mockFetch({ problem_index: 0, predicted_ids: [], predicted_rows: [] });
     await runProblem("s1", 2, "조건");
