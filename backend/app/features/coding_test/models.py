@@ -9,7 +9,7 @@ serialized into a Problem response.
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -40,7 +40,7 @@ class Problem(Base):
     rubric: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # How a returned value is compared to the expected value.
     comparison: Mapped[str] = mapped_column(String(20), default="exact")
-    created_at: Mapped[datetime] = mapped_column(default=_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     test_cases: Mapped[list["TestCase"]] = relationship(
         back_populates="problem",
@@ -91,5 +91,7 @@ class Submission(Base):
     code_quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(default=_now)
-    updated_at: Mapped[datetime] = mapped_column(default=_now, onupdate=_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
