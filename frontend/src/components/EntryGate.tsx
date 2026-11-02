@@ -18,7 +18,7 @@ export function EntryGate() {
     event.preventDefault();
     switch (classifyCode(code)) {
       case "admin":
-        router.push("/admin");
+        router.push("/admin/login");
         return;
       case "user":
         setUserCode(normalize(code));

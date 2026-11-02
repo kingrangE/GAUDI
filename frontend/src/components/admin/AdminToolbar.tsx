@@ -54,6 +54,15 @@ export function AdminToolbar() {
       >
         <Bell aria-hidden="true" size={18} />
       </button>
+      <button type="button" onClick={async () => {
+        try {
+          const response = await fetch("/api/admin-session", { method: "DELETE" });
+          if (response.ok) window.location.assign("/admin/login");
+          else setNotice("로그아웃에 실패했습니다");
+        } catch {
+          setNotice("로그아웃에 실패했습니다");
+        }
+      }}>로그아웃</button>
       <span className={styles.notice} aria-live="polite">
         {notice}
       </span>

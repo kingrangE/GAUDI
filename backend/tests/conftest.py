@@ -13,6 +13,7 @@ import os
 # OPENAI_API_KEY and fire live API calls / flip integration-test skip guards. setdefault:
 # if a developer exports a real key, it wins and the gated integration tests run.
 os.environ.setdefault("OPENAI_API_KEY", "")
+os.environ["ADMIN_TOKEN"] = "test-admin-token"
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
@@ -56,7 +57,9 @@ async def client(engine):
 
     app.dependency_overrides[get_session] = override_get_session
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
+    async with AsyncClient(
+        transport=transport, base_url="http://test", headers={"X-Admin-Token": "test-admin-token"}
+    ) as c:
         yield c
     app.dependency_overrides.clear()
 

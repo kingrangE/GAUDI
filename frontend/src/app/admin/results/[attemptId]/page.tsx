@@ -1,3 +1,4 @@
+import { fetchExamResult } from "@/lib/adminQueries";
 import { notFound } from "next/navigation";
 
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -6,7 +7,6 @@ import { Badge, Metric } from "@/components/ui";
 import {
   EXAM_FLOW,
   STEP_LABELS,
-  fetchExamResult,
   formatElapsed,
   formatScore,
   statusLabel,

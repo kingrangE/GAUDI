@@ -116,10 +116,18 @@ async def test_admin_token_guard(client, monkeypatch):
 
     monkeypatch.setattr(mock_exam_router, "get_settings", lambda: _Settings())
 
-    denied = await client.get("/api/admin/exam-results")
+    denied = await client.get("/api/admin/exam-results", headers={"X-Admin-Token": ""})
     assert denied.status_code == 401
 
     allowed = await client.get(
         "/api/admin/exam-results", headers={"X-Admin-Token": "s3cret"}
     )
     assert allowed.status_code == 200
+
+
+async def test_admin_denied_when_token_is_not_configured(client, monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(mock_exam_router, "get_settings", lambda: SimpleNamespace(admin_token=""))
+    response = await client.get("/api/admin/exam-results")
+    assert response.status_code == 401

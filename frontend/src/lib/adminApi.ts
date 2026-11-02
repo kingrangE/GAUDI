@@ -1,13 +1,4 @@
-/**
- * Admin read client for the mock-exam (모의고사) results API.
- *
- * The backend exposes `/api/admin/*` which is rooted at `exam_attempts`, so only
- * mock-exam results are reachable here — practice runs are never returned.
- * Used from server components; fetches are uncached so the console always shows
- * the latest submissions.
- */
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/** Shared admin result types and display helpers. Server queries live in adminQueries.ts. */
 
 export type AttemptStatus = "in_progress" | "completed" | "failed";
 
@@ -186,46 +177,6 @@ export type FeatureResult = {
 export type ExamResultDetail = AttemptSummary & {
   features: FeatureResult[];
 };
-
-// ---------- Fetch helpers ----------
-
-async function adminFetch<T>(path: string): Promise<T> {
-  const token = process.env.ADMIN_TOKEN;
-  const res = await fetch(`${BASE}${path}`, {
-    headers: token ? { "X-Admin-Token": token } : undefined,
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(`admin API ${path} failed (${res.status})`);
-  }
-  return (await res.json()) as T;
-}
-
-/** Fetch helpers swallow connection errors so a backend-down demo still renders
- *  an empty state instead of a Next.js error page. */
-export async function fetchCandidates(): Promise<CandidateSummary[]> {
-  try {
-    return await adminFetch<CandidateSummary[]>("/api/admin/candidates");
-  } catch {
-    return [];
-  }
-}
-
-export async function fetchExamResults(): Promise<AttemptSummary[]> {
-  try {
-    return await adminFetch<AttemptSummary[]>("/api/admin/exam-results");
-  } catch {
-    return [];
-  }
-}
-
-export async function fetchExamResult(id: string): Promise<ExamResultDetail | null> {
-  try {
-    return await adminFetch<ExamResultDetail>(`/api/admin/exam-results/${id}`);
-  } catch {
-    return null;
-  }
-}
 
 // ---------- Sort ----------
 

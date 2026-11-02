@@ -24,7 +24,7 @@ describe("EntryGate", () => {
     await user.type(screen.getByLabelText("입장 코드"), "ADMIN");
     await user.click(screen.getByRole("button", { name: "입장" }));
 
-    expect(push).toHaveBeenCalledWith("/admin");
+    expect(push).toHaveBeenCalledWith("/admin/login");
   });
 
   it("stores the user code and routes to the user hub", async () => {
