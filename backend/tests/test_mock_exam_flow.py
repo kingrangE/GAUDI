@@ -241,3 +241,18 @@ async def test_unknown_attempt_returns_404(client, mock_all_llm):
 async def test_start_rejects_unknown_candidate(client):
     resp = await client.post("/api/mock-exam/start", json={"candidate_code": "NOPE"})
     assert resp.status_code == 400
+
+
+async def test_exam_session_cannot_use_practice_apis(client, mock_all_llm):
+    response = await client.post("/api/mock-exam/start", json={"candidate_code": CANDIDATE})
+    aid = response.json()["attempt_id"]
+    paths = [
+        ("post", f"/api/rejection-eval/sessions/{aid}/topics/3/generate", {"prompt": "x"}),
+        ("post", f"/api/rejection-eval/sessions/{aid}/topics/3/submit", {"flagged_ids": []}),
+        ("post", f"/api/rejection-eval/sessions/{aid}/score", {}),
+        ("get", f"/api/rejection-eval/sessions/{aid}/result", None),
+    ]
+    for method, path, body in paths:
+        kwargs = {} if body is None else {"json": body}
+        denied = await getattr(client, method)(path, **kwargs)
+        assert denied.status_code == 403
