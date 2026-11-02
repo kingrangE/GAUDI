@@ -1,0 +1,15 @@
+[Unit]
+Description=GAUDI PostgreSQL backup and restore check
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+OnFailure=gaudi-db-backup-alert.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/gaudi/deploy/postgres
+EnvironmentFile=/etc/gaudi-backup.env
+Environment=AWS_PAGER=
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/gaudi/deploy/postgres/backup.py backup
+TimeoutStartSec=30min

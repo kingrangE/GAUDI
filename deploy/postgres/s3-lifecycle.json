@@ -1,0 +1,18 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-postgres-backups",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "gaudi/postgres/"},
+      "Expiration": {"Days": 14},
+      "NoncurrentVersionExpiration": {"NoncurrentDays": 7},
+      "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 1}
+    },
+    {
+      "ID": "remove-expired-delete-markers",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "gaudi/postgres/"},
+      "Expiration": {"ExpiredObjectDeleteMarker": true}
+    }
+  ]
+}

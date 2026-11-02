@@ -1,0 +1,31 @@
+name: gaudi-db
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gaudi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set the database admin password}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set a separate application password}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    ports:
+      - "${DB_BIND_IP:?Set the DB server private IP}:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-app.sql:/docker-entrypoint-initdb.d/10-app.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'PGPASSWORD="$$APP_DB_PASSWORD" psql -h 127.0.0.1 -U gaudi_app -d gaudi -w -Atc "SELECT 1"'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  postgres_data:
