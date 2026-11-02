@@ -68,6 +68,8 @@ class Settings(BaseSettings):
 
     # Background grading. "inline" runs grading in-process (default; used by
     # tests and a no-broker setup); "rq" enqueues to an RQ worker via Redis.
+    sandbox_image: str = "gaudi-sandbox:local"
+
     redis_url: str = "redis://localhost:6379/0"
     grading_mode: Literal["inline", "rq"] = "inline"
 

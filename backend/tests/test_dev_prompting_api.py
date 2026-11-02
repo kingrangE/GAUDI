@@ -41,7 +41,7 @@ def test_evaluate_endpoint_solved():
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["solved"] is True
+    assert body["solved"] is True, body["turns"][-1]["case_results"]
     assert body["score"]["total"] == 100.0
 
 

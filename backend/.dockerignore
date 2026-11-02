@@ -1,0 +1,5 @@
+*
+!app/
+!app/features/
+!app/features/coding_test/
+!app/features/coding_test/sandbox.py

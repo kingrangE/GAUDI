@@ -74,6 +74,10 @@ def main() -> None:
     _apply_limits(int(job.get("mem_limit_mb", 256)))
     _disable_network()
 
+    # The host starts the candidate clock only after this trusted startup marker.
+    _REAL_STDOUT.write("GAUDI_READY\n")
+    _REAL_STDOUT.flush()
+
     namespace: dict = {}
     sink = io.StringIO()
     try:

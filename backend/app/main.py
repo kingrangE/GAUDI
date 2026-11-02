@@ -19,11 +19,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 import demo_solutions
 from app.core.config import get_settings
 from app.db.session import init_models
 from app.features.coding_test.router import router as coding_test_router
+from app.features.coding_test.runner import SandboxUnavailable
 from app.features.cs_eval.router import router as cs_eval_router
 from app.features.mock_exam import models as _mock_exam_models  # noqa: F401  (register tables)
 from app.features.mock_exam.exam_router import router as mock_exam_exam_router
@@ -93,3 +95,10 @@ if os.getenv("DEMO_SOLVER"):
             return "def solution(*args):\n    return None\n"
 
     app.dependency_overrides[get_solver_client] = lambda: _DemoSolver()
+
+
+@app.exception_handler(SandboxUnavailable)
+async def sandbox_unavailable(_request, _exc):
+    return JSONResponse(
+        status_code=503, content={"detail": "Code execution sandbox is unavailable"}
+    )
