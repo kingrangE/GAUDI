@@ -52,3 +52,18 @@ export interface ProblemPublic {
   examples: Example[];
   public_example_count: number;
 }
+
+
+/** Exam responses contain only generated code and public example results. */
+export type TurnView = Pick<TurnResult, "turn" | "prompt" | "code" | "case_results"> &
+  Partial<Pick<TurnResult, "passed_count" | "total" | "solved" | "feedback">>;
+
+export interface EvaluationView {
+  run_id?: string;
+  problem_id?: string;
+  solved?: boolean;
+  score?: ScoreBreakdown;
+  turns: TurnView[];
+  pending_prompt?: string | null;
+  status?: string;
+}
