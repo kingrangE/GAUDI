@@ -1,0 +1,11 @@
+[Unit]
+Description=Notify operator of GAUDI database backup failure
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/gaudi-backup.env
+Environment=AWS_PAGER=
+ExecStart=/usr/local/bin/aws sns publish --topic-arn ${BACKUP_ALERT_TOPIC_ARN} --subject "GAUDI DB backup failed" --message "Run systemctl status gaudi-db-backup.service and journalctl -u gaudi-db-backup.service on the DB host. The latest backup may be stale."
+TimeoutStartSec=60
