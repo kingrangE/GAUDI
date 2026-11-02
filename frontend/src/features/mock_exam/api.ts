@@ -1,3 +1,5 @@
+import type { EvaluationView } from "../../../feature_dev_prompting/types";
+
 // Thin client for the /api/mock-exam backend.
 import type {
   AttemptStatus,
@@ -42,6 +44,15 @@ export const mockExamApi = {
       `/api/mock-exam/attempts/${attempt_id}/steps/${feature_key}/submit`,
       input,
     ),
+
+  getDevRun: (attempt_id: string) =>
+    request<EvaluationView>(`/api/mock-exam/attempts/${attempt_id}/dev-run`),
+
+  runDevTurn: (attempt_id: string, prompt: string, turn: number) =>
+    request<EvaluationView>(`/api/mock-exam/attempts/${attempt_id}/dev-run`, { prompt, turn }),
+
+  retryStep: (attempt_id: string, feature_key: string) =>
+    request<SubmitStepResponse>(`/api/mock-exam/attempts/${attempt_id}/steps/${feature_key}/retry`, {}),
 
   finish: (attempt_id: string) =>
     request<FinishResponse>(`/api/mock-exam/attempts/${attempt_id}/finish`, {}),

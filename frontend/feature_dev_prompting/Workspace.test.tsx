@@ -55,7 +55,8 @@ function stubFetch(problemList: ProblemPublic[]) {
     "fetch",
     vi.fn(async (url: unknown) => {
       const u = String(url);
-      if (u.endsWith("/evaluate")) return jsonRes(solvedResult);
+      if (u.endsWith("/turns")) return jsonRes({ ...solvedResult, run_id: "run-1" });
+      if (u.endsWith("/runs")) return jsonRes({ run_id: "run-1", turns: [] });
       if (u.endsWith("/problems")) return jsonRes(problemList);
       return jsonRes(problem);
     }),
@@ -74,6 +75,7 @@ describe("Workspace examMode", () => {
         problemId="sum-array"
         initialProblem={problem}
         examMode
+        onExamRun={async () => solvedResult}
         onExamSubmit={onExamSubmit}
       />,
     );
@@ -106,6 +108,7 @@ describe("Workspace examMode", () => {
         problemId="sum-array"
         initialProblem={problem}
         examMode
+        onExamRun={async () => solvedResult}
         onExamSubmit={onExamSubmit}
       />,
     );
@@ -171,4 +174,24 @@ describe("Workspace", () => {
     const picker = await screen.findByRole("combobox", { name: "문제 선택" });
     expect(within(picker).getByRole("option", { name: "동전 교환" })).toBeInTheDocument();
   });
+});
+
+
+it("restores the saved exam code and confirms it after expiry without regeneration", async () => {
+  const user = userEvent.setup();
+  const onExamRun = vi.fn();
+  const onExamSubmit = vi.fn().mockResolvedValue(undefined);
+  const loadExamRun = vi.fn().mockResolvedValue({
+    turns: solvedResult.turns.map(({ turn, prompt, code, case_results }) => ({
+      turn, prompt, code, case_results: case_results.filter((c) => !c.hidden),
+    })),
+  });
+  render(<Workspace problemId="sum-array" initialProblem={problem} examMode examExpired
+    onExamRun={onExamRun} onExamSubmit={onExamSubmit} loadExamRun={loadExamRun} />);
+  await waitFor(() => expect(screen.getByRole("region", { name: "에이전트 코드" }))
+    .toHaveTextContent("return sum(nums)"));
+  expect(screen.getByRole("button", { name: "실행" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "제출" }));
+  expect(onExamSubmit).toHaveBeenCalledWith(["배열의 합을 구해줘"]);
+  expect(onExamRun).not.toHaveBeenCalled();
 });

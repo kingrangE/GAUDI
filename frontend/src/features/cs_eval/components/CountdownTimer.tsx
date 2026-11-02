@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function format(total: number): string {
   const minutes = Math.floor(total / 60)
@@ -10,22 +10,25 @@ function format(total: number): string {
   return `${minutes}:${seconds}`;
 }
 
-/** Display-only countdown — no enforcement, no auto-submit (MVP). */
-export function CountdownTimer({ seconds }: { seconds: number }) {
+/** The server enforces deadlines; the callback stops new input in exam screens. */
+export function CountdownTimer({ seconds, onExpire }: { seconds: number; onExpire?: () => void }) {
   const [remaining, setRemaining] = useState(seconds);
+  const callback = useRef(onExpire);
+  callback.current = onExpire;
 
   useEffect(() => {
+    const deadline = Date.now() + seconds * 1000;
     const id = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          clearInterval(id);
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRemaining(left);
+      if (left === 0) {
+        clearInterval(id);
+        callback.current?.();
+      }
+    }, 250);
+    setRemaining(seconds);
     return () => clearInterval(id);
-  }, []);
+  }, [seconds]);
 
   return (
     <span className="font-mono text-sm text-ink-soft" aria-label="남은 시간">

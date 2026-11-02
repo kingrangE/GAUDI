@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import { fetchProblem, fetchProblems, runEvaluation } from "./api";
+import { createRun, fetchProblem, fetchProblems, runTurn } from "./api";
 import { CodePane } from "./CodePane";
 import { ProblemPane } from "./ProblemPane";
 import { PromptPane } from "./PromptPane";
-import type { EvaluationResult, ProblemPublic } from "./types";
+import type { EvaluationView, ProblemPublic } from "./types";
 import styles from "./workspace.module.css";
 
 interface WorkspaceProps {
@@ -15,16 +15,20 @@ interface WorkspaceProps {
   initialProblem?: ProblemPublic;
   /** When true: locks to problemId, hides picker, hides score/verdict, submits via onExamSubmit. */
   examMode?: boolean;
-  /** Called instead of runEvaluation when examMode is true. Receives all accumulated prompts. */
+  examExpired?: boolean;
+  /** Confirms the server-saved exam run using its prompt history. */
   onExamSubmit?: (prompts: string[]) => Promise<void>;
+  onExamRun?: (prompt: string, turn: number) => Promise<EvaluationView>;
+  loadExamRun?: () => Promise<EvaluationView>;
 }
 
-export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }: WorkspaceProps) {
+export function Workspace({ problemId, initialProblem, examMode, examExpired, onExamSubmit, onExamRun, loadExamRun }: WorkspaceProps) {
   const [currentId, setCurrentId] = useState(problemId);
   const [problem, setProblem] = useState<ProblemPublic | null>(initialProblem ?? null);
   const [problems, setProblems] = useState<ProblemPublic[]>([]);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<string[]>([]);
-  const [result, setResult] = useState<EvaluationResult | null>(null);
+  const [result, setResult] = useState<EvaluationView | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Exam-only: whether the public test ledger is revealed, and whether a final
@@ -47,6 +51,18 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
       active = false;
     };
   }, [examMode]);
+
+  useEffect(() => {
+    if (!examMode || !loadExamRun) return;
+    let active = true;
+    loadExamRun().then((saved) => {
+      if (!active) return;
+      setResult(saved);
+      setPrompts(saved.turns.map((t) => t.prompt));
+      setPendingPrompt(saved.pending_prompt ?? null);
+    }).catch(() => setError("저장된 실행을 불러오지 못했습니다."));
+    return () => { active = false; };
+  }, [examMode, loadExamRun]);
 
   // Load the selected problem (skip if the initial one was supplied).
   useEffect(() => {
@@ -78,28 +94,33 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
     }
     setCurrentId(id);
     setPrompts([]);
+    setPendingPrompt(null);
     setResult(null);
     setError(null);
     setShowTests(false);
   }
 
-  // 실행: add the prompt as a new turn and run it through the judge so the
-  // candidate sees the agent's code. In exam mode this is *not* the submission —
-  // the final score comes from 제출 below. (Practice mode also routes here.)
+  // Each run adds one persisted turn; final submission confirms that same code.
   async function handleRun(prompt: string) {
-    const next = [...prompts, prompt];
-    setPrompts(next);
     setRunning(true);
-    setShowTests(false); // a fresh run invalidates the previously revealed ledger
+    setShowTests(false);
     setError(null);
+    setPendingPrompt(prompt);
     try {
-      setResult(await runEvaluation(currentId, next));
+      let saved: EvaluationView;
+      if (examMode) {
+        if (!onExamRun) throw new Error("exam run callback is required");
+        saved = await onExamRun(prompt, prompts.length + 1);
+      } else {
+        const run = result?.run_id ? result : await createRun(currentId);
+        setResult(run);
+        saved = await runTurn(run.run_id!, prompt, prompts.length + 1);
+      }
+      setResult(saved);
+      setPrompts(saved.turns.map((t) => t.prompt));
+      setPendingPrompt(null);
     } catch {
-      setError(
-        examMode
-          ? "실행에 실패했습니다. 백엔드 연결을 확인하세요."
-          : "채점에 실패했습니다. 백엔드 연결을 확인하세요.",
-      );
+      setError("실행하지 못했습니다. 저장된 지시를 다시 실행해 주세요.");
     } finally {
       setRunning(false);
     }
@@ -157,9 +178,15 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
       <main className={styles.grid}>
         <ProblemPane problem={problem} />
         <CodePane code={latestTurn?.code ?? problem.starter_code} turn={latestTurn?.turn ?? null} />
+        {pendingPrompt && !running && (
+          <button onClick={() => void handleRun(pendingPrompt)} disabled={submitting}>
+            저장된 지시 재실행
+          </button>
+        )}
         <PromptPane
           onSubmit={handleRun}
           running={running}
+          blocked={Boolean(pendingPrompt) || examExpired}
           latestTurn={latestTurn}
           result={result}
           error={error}
@@ -168,7 +195,7 @@ export function Workspace({ problemId, initialProblem, examMode, onExamSubmit }:
           onFinalSubmit={handleFinalSubmit}
           showTests={showTests}
           submitting={submitting}
-          hasRun={result !== null}
+          hasRun={Boolean(result?.turns.length) && !pendingPrompt}
         />
       </main>
     </div>

@@ -46,9 +46,7 @@ class ExamAttempt(Base):
     # Mean of the recorded feature scores; filled on finalize.
     overall_normalized: Mapped[float | None] = mapped_column(Float, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     feature_results: Mapped[list["ExamFeatureResult"]] = relationship(
@@ -78,3 +76,24 @@ class ExamFeatureResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     attempt: Mapped[ExamAttempt] = relationship(back_populates="feature_results")
+
+
+class ExamSubmission(Base):
+    """Durable, immutable input; grading can be retried without asking the candidate."""
+
+    __tablename__ = "exam_submissions"
+    __table_args__ = (UniqueConstraint("exam_attempt_id", "feature_key"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    exam_attempt_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("exam_attempts.id"),
+        index=True,
+    )
+    feature_key: Mapped[str] = mapped_column(String(40))
+    payload: Mapped[dict] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(20), default="queued")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lease: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

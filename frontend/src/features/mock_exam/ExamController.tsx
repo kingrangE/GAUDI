@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
@@ -58,44 +58,48 @@ export function ExamController() {
   const [currentStep, setCurrentStep] = useState<FeatureKey | null>(null);
   const [stepMaterial, setStepMaterial] = useState<StepMaterial | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [failedSteps, setFailedSteps] = useState<FeatureKey[]>([]);
-  // In-flight background scoring requests. The user advances without awaiting
-  // these; the final step waits for all of them before finalizing the score.
-  const pendingRef = useRef<Promise<unknown>[]>([]);
+  const [savedSubmissions, setSavedSubmissions] = useState<Record<string, string>>({});
+  const [resumeAvailable, setResumeAvailable] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const loadMaterial = useCallback(async (id: string, step: FeatureKey) => {
     const m = (await mockExamApi.getStepMaterial(id, step)) as unknown as StepMaterial;
     setStepMaterial(m);
   }, []);
 
-  // Restore an in-progress attempt on mount.
-  useEffect(() => {
+  const restoreExam = useCallback(async () => {
     const stored = sessionStorage.getItem(SESSION_KEY);
     if (!stored) return;
-    mockExamApi
-      .getAttempt(stored)
-      .then(async (status) => {
-        if (status.status === "finished" || status.status === "completed") {
-          sessionStorage.removeItem(SESSION_KEY);
-          return;
-        }
-        setAttemptId(stored);
-        setFlow((status.flow as FeatureKey[]) ?? DEFAULT_FLOW);
-        setCompletedSteps((status.completed_steps as FeatureKey[]) ?? []);
-        setRemainingSeconds(status.remaining_seconds);
-        if (status.remaining_seconds <= 0) {
-          await mockExamApi.finish(stored);
-          sessionStorage.removeItem(SESSION_KEY);
-          setPhase("done");
-          return;
-        }
-        const step = status.current_step as FeatureKey | null;
-        setCurrentStep(step);
-        if (step) await loadMaterial(stored, step);
-        setPhase("exam");
-      })
-      .catch(() => sessionStorage.removeItem(SESSION_KEY));
+    setResumeAvailable(true);
+    setPhase("loading");
+    setError(null);
+    try {
+      const status = await mockExamApi.getAttempt(stored);
+      if (status.status === "finished" || status.status === "completed") {
+        sessionStorage.removeItem(SESSION_KEY);
+        setResumeAvailable(false);
+        setPhase("done");
+        return;
+      }
+      setAttemptId(stored);
+      setFlow((status.flow as FeatureKey[]) ?? DEFAULT_FLOW);
+      setCompletedSteps((status.completed_steps as FeatureKey[]) ?? []);
+      setRemainingSeconds(status.remaining_seconds);
+      setSavedSubmissions(status.submissions ?? {});
+      const step = status.current_step as FeatureKey | null;
+      setCurrentStep(step);
+      if (step) {
+        try { await loadMaterial(stored, step); }
+        catch { setError("문제를 불러오지 못했습니다. 다시 시도해 주세요."); }
+      }
+      setPhase("exam");
+    } catch {
+      setError("저장된 시험에 연결하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.");
+      setPhase("intro");
+    }
   }, [loadMaterial]);
+
+  useEffect(() => { void restoreExam(); }, [restoreExam]);
 
   const startExam = useCallback(async () => {
     setPhase("loading");
@@ -118,43 +122,64 @@ export function ExamController() {
     }
   }, [loadMaterial]);
 
-  // Submit the current step's input, then advance IMMEDIATELY — the server-side
-  // LLM scoring is slow, so we fire it in the background instead of awaiting it.
-  // The next step is derived from the locally-known `flow` (no need for the
-  // server's `next_step`), so the candidate never waits between problems.
-  const handleSubmit = useCallback(
-    async (feature: FeatureKey, input: unknown) => {
-      if (!attemptId) return;
-      setError(null);
+  const finishExam = useCallback(async () => {
+    if (!attemptId) return;
+    setPhase("finishing");
+    try {
+      await mockExamApi.finish(attemptId);
+      sessionStorage.removeItem(SESSION_KEY);
+      setPhase("done");
+    } catch {
+      setError("종료하지 못했습니다. 저장된 답안의 채점을 확인한 뒤 다시 시도해 주세요.");
+      setPhase("exam");
+    }
+  }, [attemptId]);
 
-      // Fire scoring in the background. Swallow failures into `failedSteps` so a
-      // single failed step can't reject the Promise.allSettled at finish time.
-      const pending = mockExamApi.submitStep(attemptId, feature, input).catch(() => {
-        setFailedSteps((prev) => (prev.includes(feature) ? prev : [...prev, feature]));
-      });
-      pendingRef.current.push(pending);
+  const advance = useCallback(async (feature: FeatureKey, next: string | null) => {
+    if (!attemptId) return;
+    setCompletedSteps((prev) => [...new Set([...prev, feature])]);
+    setSavedSubmissions((prev) => ({ ...prev, [feature]: "graded" }));
+    if (next) {
+      setCurrentStep(next as FeatureKey);
+      await loadMaterial(attemptId, next as FeatureKey);
+    } else {
+      await finishExam();
+    }
+  }, [attemptId, loadMaterial, finishExam]);
 
-      setCompletedSteps((prev) => (prev.includes(feature) ? prev : [...prev, feature]));
+  const handleSubmit = useCallback(async (feature: FeatureKey, input: unknown) => {
+    if (!attemptId) return;
+    setError(null);
+    try {
+      const result = await mockExamApi.submitStep(attemptId, feature, input);
+      await advance(feature, result.next_step);
+    } catch (error) {
+      setError("제출을 확인하지 못했습니다. 답안을 유지한 채 다시 시도해 주세요.");
+      try {
+        const status = await mockExamApi.getAttempt(attemptId);
+        setSavedSubmissions(status.submissions ?? {});
+      } catch { /* The current editor retains the input while offline. */ }
+      throw error;
+    }
+  }, [attemptId, advance]);
 
-      const idx = flow.indexOf(feature);
-      const next = idx >= 0 && idx + 1 < flow.length ? flow[idx + 1] : null;
+  const retrySaved = useCallback(async (feature: FeatureKey) => {
+    if (!attemptId) return;
+    setRetrying(true);
+    setError(null);
+    try {
+      const result = await mockExamApi.retryStep(attemptId, feature);
+      await advance(feature, result.next_step);
+    } catch {
+      setError("재채점하지 못했습니다. 진행 중인 채점은 잠시 후 다시 확인해 주세요.");
+    } finally {
+      setRetrying(false);
+    }
+  }, [attemptId, advance]);
 
-      if (!next) {
-        // Last step: wait for every background scoring to land so finalize can
-        // average a complete set of feature scores, then close out the exam.
-        setPhase("finishing");
-        await Promise.allSettled(pendingRef.current);
-        pendingRef.current = [];
-        await mockExamApi.finish(attemptId);
-        sessionStorage.removeItem(SESSION_KEY);
-        setPhase("done");
-      } else {
-        setCurrentStep(next);
-        await loadMaterial(attemptId, next);
-      }
-    },
-    [attemptId, flow, loadMaterial],
-  );
+  const loadDevRun = useCallback(() => mockExamApi.getDevRun(attemptId!), [attemptId]);
+  const runDevTurn = useCallback((prompt: string, turn: number) =>
+    mockExamApi.runDevTurn(attemptId!, prompt, turn), [attemptId]);
 
   const generateRejection = useCallback(
     async (prompt: string): Promise<PublicItem[]> => {
@@ -183,7 +208,9 @@ export function ExamController() {
             </p>
           )}
           <div className="mt-6">
-            <Button onClick={() => void startExam()}>시험 시작</Button>
+            <Button onClick={() => void (resumeAvailable ? restoreExam() : startExam())}>
+              {resumeAvailable ? "저장된 시험 다시 연결" : "시험 시작"}
+            </Button>
           </div>
         </Panel>
       </div>
@@ -215,11 +242,7 @@ export function ExamController() {
           <p className="mt-3 text-sm text-ink-soft">
             제출이 완료되었습니다. 점수와 평가는 관리자가 확인합니다.
           </p>
-          {failedSteps.length > 0 && (
-            <p className="mt-3 rounded border border-warn-100 bg-warn-50 px-3 py-2 text-sm text-warn-600">
-              일부 단계 채점에 실패했습니다. 관리자가 확인합니다.
-            </p>
-          )}
+
         </Panel>
       </div>
     );
@@ -262,7 +285,8 @@ export function ExamController() {
           </ol>
         </div>
         {remainingSeconds > 0 && (
-          <CountdownTimer key={attemptId ?? "timer"} seconds={remainingSeconds} />
+          <CountdownTimer key={attemptId ?? "timer"} seconds={remainingSeconds}
+            onExpire={() => setRemainingSeconds(0)} />
         )}
       </div>
 
@@ -270,8 +294,30 @@ export function ExamController() {
         <p className="border-b border-bad-100 bg-bad-50 px-5 py-2 text-sm text-bad-600">{error}</p>
       )}
 
+      {Object.entries(savedSubmissions).filter(([, state]) => state !== "graded").map(([feature, state]) => (
+        <div key={feature} className="border-b border-line bg-paper px-5 py-3">
+          <p>{STEP_LABELS[feature as FeatureKey]}: 저장된 답안 ({state === "failed" ? "채점 실패" : "채점 대기/진행 중"})</p>
+          <Button disabled={retrying} onClick={() => void retrySaved(feature as FeatureKey)}>
+            저장된 답안 재채점
+          </Button>
+        </div>
+      ))}
+      {(remainingSeconds <= 0 || currentStep === null) && (
+        <div className="px-5 py-6">
+          <p>{remainingSeconds <= 0 ? "제한 시간이 종료되었습니다." : "모든 답안을 제출했습니다."}</p>
+          <Button onClick={() => void finishExam()}>시험 종료</Button>
+        </div>
+      )}
+
+      {error && currentStep && stepMaterial?.feature_key !== currentStep && attemptId && (
+        <Button onClick={() => void loadMaterial(attemptId, currentStep).then(() => setError(null))
+          .catch(() => setError("문제를 불러오지 못했습니다. 다시 시도해 주세요."))}>
+          문제 다시 불러오기
+        </Button>
+      )}
+
       {/* The step renders the SAME workspace as practice, in exam mode (score hidden). */}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1" hidden={remainingSeconds <= 0 && currentStep !== "dev_prompting"}>
         {currentStep === "context_engineering" && (
           <ContextWorkspace
             key="context"
@@ -335,6 +381,9 @@ export function ExamController() {
             key="dev"
             problemId={DEV_PROBLEM_ID}
             examMode
+            examExpired={remainingSeconds <= 0}
+            onExamRun={runDevTurn}
+            loadExamRun={loadDevRun}
             onExamSubmit={(prompts) => handleSubmit("dev_prompting", { prompts })}
           />
         )}

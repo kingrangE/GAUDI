@@ -12,6 +12,7 @@ vi.mock("./api", () => ({
     generateRejection: vi.fn(),
     submitStep: vi.fn(),
     finish: vi.fn(),
+    retryStep: vi.fn(),
   },
 }));
 
@@ -27,7 +28,7 @@ vi.mock("@/features/cs_eval/components/CountdownTimer", () => ({
 // the real feature UIs (those have their own tests).
 vi.mock("../../../feature_context_engineering", () => ({
   Workspace: ({ onExamSubmit }: { onExamSubmit: (v: string) => Promise<void> }) => (
-    <button onClick={() => void onExamSubmit("md")}>step-context</button>
+    <button onClick={() => void onExamSubmit("md").catch(() => {})}>step-context</button>
   ),
 }));
 vi.mock("../../../feature_spec_design", () => ({
@@ -115,41 +116,60 @@ describe("ExamController", () => {
     await waitFor(() => expect(api.submitStep).toHaveBeenCalledTimes(5));
   });
 
-  it("advances to the next step without awaiting the (slow) evaluation", async () => {
-    // The first step's scoring never resolves during this test, proving the
-    // controller does not block on it before showing the next problem.
-    api.submitStep.mockImplementationOnce(() => new Promise(() => {}));
-
+  it("keeps the current editor until the server confirms the submission", async () => {
+    let resolve!: (value: unknown) => void;
+    api.submitStep.mockImplementationOnce(() => new Promise((res) => { resolve = res; }));
     render(<ExamController />);
     fireEvent.click(screen.getByRole("button", { name: "시험 시작" }));
     fireEvent.click(await screen.findByText("step-context"));
-
-    // Next step rendered even though step 1's evaluation is still in flight.
+    expect(screen.queryByText("step-spec")).not.toBeInTheDocument();
+    resolve({ recorded: true, next_step: "spec_design" });
     expect(await screen.findByText("step-spec")).toBeInTheDocument();
   });
 
-  it("waits for in-flight scoring before finishing on the last step", async () => {
-    // Hang the first step's scoring; the candidate still walks through every
-    // step, but the final "finish" must wait until that scoring lands.
-    let resolveFirst!: (value: unknown) => void;
-    const firstPending = new Promise((res) => {
-      resolveFirst = res;
-    });
-    api.submitStep.mockImplementationOnce(() => firstPending);
-
+  it("keeps the editor on network failure and never finishes", async () => {
+    api.submitStep.mockRejectedValueOnce(new Error("offline"));
     render(<ExamController />);
     fireEvent.click(screen.getByRole("button", { name: "시험 시작" }));
-    for (const label of ["step-context", "step-spec", "step-rejection", "step-test", "step-dev"]) {
-      fireEvent.click(await screen.findByText(label));
-    }
-
-    // On the last step we enter the grading gate and must NOT finalize yet.
-    expect(await screen.findByText("제출을 채점하는 중…")).toBeInTheDocument();
+    fireEvent.click(await screen.findByText("step-context"));
+    expect(await screen.findByText(/제출을 확인하지 못했습니다/)).toBeInTheDocument();
+    expect(screen.getByText("step-context")).toBeInTheDocument();
     expect(api.finish).not.toHaveBeenCalled();
-
-    // Let the stuck scoring land → the exam closes out.
-    resolveFirst({ recorded: true, next_step: "spec_design" });
-    expect(await screen.findByText("수고하셨습니다")).toBeInTheDocument();
-    expect(api.finish).toHaveBeenCalledWith("att1");
   });
+
+  it("restores a saved failed answer and retries without new input", async () => {
+    sessionStorage.setItem("mockExam:attemptId", "att1");
+    api.getAttempt.mockResolvedValue({ flow: FLOW, current_step: "context_engineering",
+      remaining_seconds: 100, completed_steps: [], status: "in_progress",
+      submissions: { context_engineering: "failed" } });
+    api.retryStep.mockResolvedValue({ recorded: true, next_step: "spec_design" });
+    render(<ExamController />);
+    fireEvent.click(await screen.findByRole("button", { name: "저장된 답안 재채점" }));
+    expect(await screen.findByText("step-spec")).toBeInTheDocument();
+    expect(api.retryStep).toHaveBeenCalledWith("att1", "context_engineering");
+  });
+
+  it("blocks new input on expired restore and allows finish", async () => {
+    sessionStorage.setItem("mockExam:attemptId", "att1");
+    api.getAttempt.mockResolvedValue({ flow: FLOW, current_step: "context_engineering",
+      remaining_seconds: 0, completed_steps: [], status: "in_progress", submissions: {} });
+    render(<ExamController />);
+    expect(await screen.findByText("제한 시간이 종료되었습니다.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "step-context" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "시험 종료" }));
+    expect(await screen.findByText("수고하셨습니다")).toBeInTheDocument();
+  });
+});
+
+it("preserves the attempt ID if reconnecting while offline", async () => {
+  sessionStorage.setItem("mockExam:attemptId", "att1");
+  api.getAttempt.mockRejectedValueOnce(new Error("offline"));
+  render(<ExamController />);
+  expect(await screen.findByRole("button", { name: "저장된 시험 다시 연결" })).toBeInTheDocument();
+  expect(sessionStorage.getItem("mockExam:attemptId")).toBe("att1");
+  api.getAttempt.mockResolvedValueOnce({ flow: FLOW, current_step: "context_engineering",
+    remaining_seconds: 100, completed_steps: [], status: "in_progress", submissions: {} });
+  fireEvent.click(screen.getByRole("button", { name: "저장된 시험 다시 연결" }));
+  expect(await screen.findByText("step-context")).toBeInTheDocument();
+  expect(api.start).not.toHaveBeenCalled();
 });

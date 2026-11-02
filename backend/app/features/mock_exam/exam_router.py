@@ -26,16 +26,20 @@ Design notes
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from math import ceil
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.features.mock_exam.models import ExamAttempt, ExamFeatureResult
+from app.features.mock_exam.models import ExamAttempt, ExamFeatureResult, ExamSubmission
 from app.features.mock_exam.service import (
     create_exam_attempt,
     finalize_exam_attempt,
@@ -62,10 +66,10 @@ from feature_context_engineering import (
     get_project as ctx_get_project,
 )
 from feature_context_engineering.evaluate import build_report as ctx_build_report
+from feature_dev_prompting import sessions as dev_sessions
 
 # dev_prompting
-from feature_dev_prompting.api import get_solver_client
-from feature_dev_prompting.evaluator import evaluate as dev_evaluate
+from feature_dev_prompting.api import TurnRequest, get_solver_client
 from feature_dev_prompting.models import ProblemPublic as DevProblemPublic
 from feature_dev_prompting.problems import get_problem as dev_get_problem
 
@@ -118,21 +122,22 @@ class AttemptStateResponse(BaseModel):
     current_step: str | None
     remaining_seconds: int
     status: str
+    submissions: dict[str, str] = Field(default_factory=dict)
 
 
 class GenerateRequest(BaseModel):
-    prompt: str = Field(min_length=1)
+    prompt: str = Field(min_length=1, max_length=20000)
 
 
 class StepSubmitRequest(BaseModel):
     """Union of every step's input; each adapter validates its own field."""
 
-    claude_md: str | None = None  # context_engineering
-    instruction: str | None = None  # spec_design
+    claude_md: str | None = Field(default=None, max_length=50000)  # context_engineering
+    instruction: str | None = Field(default=None, max_length=20000)  # spec_design
     flagged_ids: list[str] | None = None  # rejection_eval
     reasons: dict[str, str] | None = None  # rejection_eval
     flaws: list[str] | None = None  # test_design
-    prompts: list[str] | None = None  # dev_prompting
+    prompts: list[str] | None = Field(default=None, max_length=20)  # dev_prompting
 
 
 class SubmitResponse(BaseModel):
@@ -167,22 +172,35 @@ def _remaining_seconds(attempt: ExamAttempt) -> int:
     if started.tzinfo is None:  # SQLite may round-trip a naive datetime
         started = started.replace(tzinfo=timezone.utc)
     elapsed = (datetime.now(timezone.utc) - started).total_seconds()
-    return max(0, int(EXAM_TOTAL_SECONDS - elapsed))
+    return max(0, ceil(EXAM_TOTAL_SECONDS - elapsed))
 
 
-async def _get_attempt_or_404(db: AsyncSession, attempt_id: str) -> ExamAttempt:
-    attempt = await db.get(ExamAttempt, attempt_id)
+async def _get_attempt_or_404(
+    db: AsyncSession,
+    attempt_id: str,
+    *,
+    lock: bool = False,
+) -> ExamAttempt:
+    query = select(ExamAttempt).where(ExamAttempt.id == attempt_id)
+    if lock:
+        query = query.with_for_update()
+    attempt = await db.scalar(query)
     if attempt is None:
         raise HTTPException(status_code=404, detail="exam attempt not found")
     return attempt
 
 
+def _require_open(attempt: ExamAttempt, *, check_time: bool = True) -> None:
+    if attempt.status != "in_progress":
+        raise HTTPException(status_code=409, detail="exam is already completed")
+    if check_time and _remaining_seconds(attempt) <= 0:
+        raise HTTPException(status_code=409, detail="exam deadline has passed")
+
+
 async def _completed_steps(db: AsyncSession, attempt_id: str) -> list[str]:
     """Recorded feature_results for this attempt, in canonical EXAM_FLOW order."""
     rows = await db.scalars(
-        select(ExamFeatureResult.feature_key).where(
-            ExamFeatureResult.exam_attempt_id == attempt_id
-        )
+        select(ExamFeatureResult.feature_key).where(ExamFeatureResult.exam_attempt_id == attempt_id)
     )
     recorded = set(rows.all())
     return [f for f in EXAM_FLOW if f in recorded]
@@ -198,9 +216,7 @@ def _current_step(completed: list[str]) -> str | None:
 
 def _require(value, feature_key: str, field: str):
     if value is None or (isinstance(value, str) and not value.strip()):
-        raise HTTPException(
-            status_code=400, detail=f"{feature_key} requires {field!r}"
-        )
+        raise HTTPException(status_code=400, detail=f"{feature_key} requires {field!r}")
     return value
 
 
@@ -274,12 +290,8 @@ async def _ensure_rejection_session(db: AsyncSession, attempt: ExamAttempt) -> N
     db.add(session)
     await db.flush()
     for index, topic in enumerate(TOPICS):
-        db.add(
-            RejectionAttempt(
-                session_id=session.id, topic_index=index, topic_title=topic.title
-            )
-        )
-    await db.commit()
+        db.add(RejectionAttempt(session_id=session.id, topic_index=index, topic_title=topic.title))
+    await db.flush()
 
 
 # --------------------------------------------------------------------------- #
@@ -312,9 +324,7 @@ async def _score_spec(instruction: str | None) -> dict:
     return raw
 
 
-async def _score_rejection(
-    db: AsyncSession, attempt: ExamAttempt, body: StepSubmitRequest
-) -> dict:
+async def _score_rejection(db: AsyncSession, attempt: ExamAttempt, body: StepSubmitRequest) -> dict:
     await _ensure_rejection_session(db, attempt)
     req = RejSubmitRequest(
         flagged_ids=body.flagged_ids or [],
@@ -347,18 +357,18 @@ async def _score_test_design(flaws: list[str] | None) -> dict:
     )
 
 
-def _score_dev_prompting(prompts: list[str] | None, solver: LLMClient) -> dict:
-    if not prompts:
-        raise HTTPException(status_code=400, detail="dev_prompting requires 'prompts'")
-    problem = dev_get_problem(DEV_PROBLEM_ID)
-    if problem is None:
-        raise HTTPException(status_code=500, detail="dev-prompting problem missing")
-    result = dev_evaluate(problem, prompts, client=solver)
-    raw = result.model_dump()
-    # ScoreBreakdown.total is 0–100, but normalize.py multiplies dev_prompting's
-    # "total" by 100 (it expects a 0–1 value). Scale to 0–1 here so the persisted
-    # normalized score is the true 0–100 composite (not saturated at 100).
-    raw["total"] = result.score.total / 100.0
+async def _score_dev_prompting(db: AsyncSession, attempt: ExamAttempt, prompts) -> dict:
+    run = await db.scalar(
+        select(dev_sessions.DevRun).where(
+            dev_sessions.DevRun.exam_attempt_id == attempt.id,
+        )
+    )
+    if run is None or not run.turns or run.status != "idle":
+        raise HTTPException(status_code=409, detail="complete a saved code run first")
+    if prompts != [t["prompt"] for t in run.turns]:
+        raise HTTPException(status_code=409, detail="submit the saved run prompts")
+    raw = dev_sessions.result(run)
+    raw["total"] = raw["score"]["total"] / 100.0
     return raw
 
 
@@ -371,7 +381,7 @@ async def _score_step(
     context_client: LLMClient | None,
 ) -> dict:
     if feature_key == "context_engineering":
-        return _score_context(body.claude_md, context_client)
+        return await asyncio.to_thread(_score_context, body.claude_md, context_client)
     if feature_key == "spec_design":
         return await _score_spec(body.instruction)
     if feature_key == "rejection_eval":
@@ -379,7 +389,7 @@ async def _score_step(
     if feature_key == "test_design":
         return await _score_test_design(body.flaws)
     if feature_key == "dev_prompting":
-        return _score_dev_prompting(body.prompts, solver)
+        return await _score_dev_prompting(db, attempt, body.prompts)
     raise HTTPException(status_code=404, detail=f"unknown exam step: {feature_key}")
 
 
@@ -390,9 +400,7 @@ router = APIRouter(prefix="/api/mock-exam", tags=["mock-exam"])
 
 
 @router.post("/start", response_model=StartResponse)
-async def start(
-    body: StartRequest, db: AsyncSession = Depends(get_session)
-) -> StartResponse:
+async def start(body: StartRequest, db: AsyncSession = Depends(get_session)) -> StartResponse:
     try:
         attempt = await create_exam_attempt(db, body.candidate_code)
     except ValueError as exc:
@@ -411,12 +419,16 @@ async def get_attempt(
 ) -> AttemptStateResponse:
     attempt = await _get_attempt_or_404(db, attempt_id)
     completed = await _completed_steps(db, attempt.id)
+    submissions = await db.scalars(
+        select(ExamSubmission).where(ExamSubmission.exam_attempt_id == attempt.id)
+    )
     return AttemptStateResponse(
         flow=EXAM_FLOW,
         completed_steps=completed,
         current_step=_current_step(completed),
         remaining_seconds=_remaining_seconds(attempt),
         status=attempt.status,
+        submissions={row.feature_key: row.status for row in submissions},
     )
 
 
@@ -436,16 +448,69 @@ async def generate_rejection_items(
     body: GenerateRequest,
     db: AsyncSession = Depends(get_session),
 ) -> dict:
-    attempt = await _get_attempt_or_404(db, attempt_id)
-    await _ensure_rejection_session(db, attempt)
-    resp = await rej_service.generate_for_topic(
-        db, attempt.id, REJECTION_TOPIC_INDEX, body.prompt
+    attempt = await _get_attempt_or_404(db, attempt_id, lock=True)
+    _require_open(attempt)
+    submitted = await db.scalar(
+        select(ExamSubmission.id).where(
+            ExamSubmission.exam_attempt_id == attempt.id,
+            ExamSubmission.feature_key == "rejection_eval",
+        )
     )
+    if submitted:
+        raise HTTPException(status_code=409, detail="answer already submitted")
+    await _ensure_rejection_session(db, attempt)
+    resp = await rej_service.generate_for_topic(db, attempt.id, REJECTION_TOPIC_INDEX, body.prompt)
     # PublicItem = {id, text} only — is_flawed / explanation stay server-side.
     return {
         "feature_key": "rejection_eval",
         "items": [item.model_dump() for item in resp.items],
     }
+
+
+@router.get("/attempts/{attempt_id}/dev-run")
+async def get_dev_run(attempt_id: str, db: AsyncSession = Depends(get_session)) -> dict:
+    await _get_attempt_or_404(db, attempt_id)
+    run = await db.scalar(
+        select(dev_sessions.DevRun).where(
+            dev_sessions.DevRun.exam_attempt_id == attempt_id,
+        )
+    )
+    return dev_sessions.public_result(run) if run else {"turns": []}
+
+
+@router.post("/attempts/{attempt_id}/dev-run")
+async def run_dev_turn(
+    attempt_id: str,
+    body: TurnRequest,
+    db: AsyncSession = Depends(get_session),
+    solver: LLMClient = Depends(get_solver_client),
+) -> dict:
+    attempt = await _get_attempt_or_404(db, attempt_id, lock=True)
+    _require_open(attempt, check_time=False)
+    submitted = await db.scalar(
+        select(ExamSubmission.id).where(
+            ExamSubmission.exam_attempt_id == attempt_id,
+            ExamSubmission.feature_key == "dev_prompting",
+        )
+    )
+    if submitted:
+        raise HTTPException(status_code=409, detail="answer already submitted")
+    run = await db.scalar(
+        select(dev_sessions.DevRun).where(
+            dev_sessions.DevRun.exam_attempt_id == attempt_id,
+        )
+    )
+    retrying_pending = (
+        run is not None and run.pending_prompt == body.prompt and body.turn == len(run.turns) + 1
+    )
+    if not retrying_pending:
+        _require_open(attempt)
+    if run is None:
+        run = dev_sessions.DevRun(exam_attempt_id=attempt_id, problem_id=DEV_PROBLEM_ID)
+        db.add(run)
+        await db.flush()
+    await dev_sessions.run_turn(db, run, body.prompt, body.turn, solver)
+    return dev_sessions.public_result(run, through=body.turn)
 
 
 @router.post("/attempts/{attempt_id}/steps/{feature_key}/submit", response_model=SubmitResponse)
@@ -457,25 +522,147 @@ async def submit_step(
     solver: LLMClient = Depends(get_solver_client),
     context_client: LLMClient | None = Depends(get_context_client),
 ) -> SubmitResponse:
-    attempt = await _get_attempt_or_404(db, attempt_id)
+    attempt = await _get_attempt_or_404(db, attempt_id, lock=True)
     if feature_key not in EXAM_FLOW:
         raise HTTPException(status_code=404, detail=f"unknown exam step: {feature_key}")
 
-    # Score server-side, then persist via the existing write contract. The native
-    # result (which carries the score) never reaches the candidate.
-    raw_result = await _score_step(feature_key, db, attempt, body, solver, context_client)
-    await record_feature_result(db, attempt.id, feature_key, raw_result)
+    _require_open(attempt, check_time=False)
+    saved = await db.scalar(
+        select(ExamSubmission).where(
+            ExamSubmission.exam_attempt_id == attempt.id,
+            ExamSubmission.feature_key == feature_key,
+        )
+    )
+    payload = body.model_dump()
+    if saved is not None:
+        if saved.payload != payload:
+            raise HTTPException(status_code=409, detail="submitted input is immutable")
+    else:
+        # A saved dev run is already accepted input; final submit only confirms it.
+        if feature_key != "dev_prompting":
+            _require_open(attempt)
+        field = {
+            "context_engineering": "claude_md",
+            "spec_design": "instruction",
+            "test_design": "flaws",
+            "dev_prompting": "prompts",
+        }.get(feature_key)
+        if field:
+            _require(getattr(body, field), feature_key, field)
+        if feature_key == "dev_prompting":
+            await _score_dev_prompting(db, attempt, body.prompts)
+        saved = ExamSubmission(exam_attempt_id=attempt.id, feature_key=feature_key, payload=payload)
+        db.add(saved)
+        try:
+            await db.commit()
+            await db.refresh(saved)
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=409, detail="submission already received; reload"
+            ) from None
+    return await _grade_saved(db, attempt, saved, solver, context_client)
 
-    completed = await _completed_steps(db, attempt.id)
-    return SubmitResponse(recorded=True, next_step=_current_step(completed))
+
+async def _grade_saved(db, attempt, saved, solver, context_client) -> SubmitResponse:
+    if saved.status == "graded":
+        return SubmitResponse(
+            recorded=True, next_step=_current_step(await _completed_steps(db, attempt.id))
+        )
+    now, lease = datetime.now(timezone.utc), uuid4().hex
+    claimed = await db.execute(
+        update(ExamSubmission).execution_options(synchronize_session="fetch")
+        .where(
+            ExamSubmission.id == saved.id,
+            or_(
+                ExamSubmission.status.in_(["queued", "failed"]),
+                (ExamSubmission.status == "grading")
+                & (ExamSubmission.updated_at < now - timedelta(minutes=15)),
+            ),
+        )
+        .values(status="grading", updated_at=now, error=None, lease=lease)
+    )
+    await db.commit()
+    if claimed.rowcount != 1:
+        raise HTTPException(status_code=409, detail="grading is already in progress; retry later")
+    saved_id, attempt_id, feature_key = saved.id, attempt.id, saved.feature_key
+    try:
+        raw = await _score_step(
+            feature_key,
+            db,
+            attempt,
+            StepSubmitRequest.model_validate(saved.payload),
+            solver,
+            context_client,
+        )
+        current = await db.scalar(
+            select(ExamSubmission)
+            .where(
+                ExamSubmission.id == saved_id,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if current.lease != lease:
+            raise HTTPException(status_code=409, detail="grading was reclaimed; reload")
+        await record_feature_result(db, attempt_id, feature_key, raw)
+    except Exception as exc:
+        await db.rollback()
+        await db.execute(
+            update(ExamSubmission).execution_options(synchronize_session="fetch")
+            .where(ExamSubmission.id == saved_id, ExamSubmission.lease == lease)
+            .values(
+                status="failed",
+                error=type(exc).__name__,
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=503, detail="answer saved; grading failed, retry saved answer"
+        ) from exc
+    await db.execute(
+        update(ExamSubmission).execution_options(synchronize_session="fetch")
+        .where(ExamSubmission.id == saved_id, ExamSubmission.lease == lease)
+        .values(
+            status="graded",
+            error=None,
+            updated_at=datetime.now(timezone.utc),
+        )
+    )
+    await db.commit()
+    return SubmitResponse(
+        recorded=True, next_step=_current_step(await _completed_steps(db, attempt_id))
+    )
+
+
+@router.post("/attempts/{attempt_id}/steps/{feature_key}/retry", response_model=SubmitResponse)
+async def retry_step(
+    attempt_id: str,
+    feature_key: str,
+    db: AsyncSession = Depends(get_session),
+    solver: LLMClient = Depends(get_solver_client),
+    context_client: LLMClient | None = Depends(get_context_client),
+) -> SubmitResponse:
+    attempt = await _get_attempt_or_404(db, attempt_id, lock=True)
+    _require_open(attempt, check_time=False)
+    saved = await db.scalar(
+        select(ExamSubmission).where(
+            ExamSubmission.exam_attempt_id == attempt_id,
+            ExamSubmission.feature_key == feature_key,
+        )
+    )
+    if saved is None:
+        raise HTTPException(status_code=404, detail="no saved answer")
+    return await _grade_saved(db, attempt, saved, solver, context_client)
 
 
 @router.post("/attempts/{attempt_id}/finish", response_model=FinishResponse)
-async def finish(
-    attempt_id: str, db: AsyncSession = Depends(get_session)
-) -> FinishResponse:
-    # Allowed even when remaining_seconds == 0 — finalize averages whatever was
-    # recorded (a partial exam still produces a partial average).
+async def finish(attempt_id: str, db: AsyncSession = Depends(get_session)) -> FinishResponse:
+    # Finishing is allowed after the deadline; missing steps count as zero.
     await _get_attempt_or_404(db, attempt_id)
-    await finalize_exam_attempt(db, attempt_id)
+    try:
+        await finalize_exam_attempt(db, attempt_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return FinishResponse(completed=True)

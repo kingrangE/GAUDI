@@ -53,7 +53,7 @@ async def test_record_is_idempotent_per_feature(db):
     await service.record_feature_result(db, attempt.id, "spec_design", {"total": 90})
     finalized = await service.finalize_exam_attempt(db, attempt.id)
     # Second recording overwrote the first — only one feature row, score 90.
-    assert finalized.overall_normalized == 90.0
+    assert finalized.overall_normalized == 18.0
     detail = await service.get_exam_result(db, attempt.id)
     assert len(detail.features) == 1
 

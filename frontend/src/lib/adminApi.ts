@@ -176,6 +176,7 @@ export type FeatureResult = {
 
 export type ExamResultDetail = AttemptSummary & {
   features: FeatureResult[];
+  submissions?: Array<{ feature_key: KnownFeatureKey; status: string; error: string | null; accepted_at: string }>;
 };
 
 // ---------- Sort ----------

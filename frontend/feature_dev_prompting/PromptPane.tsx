@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { EvaluationResult, TurnResult } from "./types";
+import type { EvaluationView, TurnView } from "./types";
 import { VerdictLedger } from "./VerdictLedger";
 import styles from "./workspace.module.css";
 
@@ -8,8 +8,9 @@ interface PromptPaneProps {
   /** Runs the prompt: practice mode scores it; exam mode just implements the code. */
   onSubmit: (prompt: string) => void;
   running: boolean;
-  latestTurn: TurnResult | null;
-  result: EvaluationResult | null;
+  blocked?: boolean;
+  latestTurn: TurnView | null;
+  result: EvaluationView | null;
   error: string | null;
   /** When true: hides the overall score/feedback and swaps in the 실행·테스트 채점·제출 controls. */
   examMode?: boolean;
@@ -28,6 +29,7 @@ interface PromptPaneProps {
 export function PromptPane({
   onSubmit,
   running,
+  blocked,
   latestTurn,
   result,
   error,
@@ -40,7 +42,7 @@ export function PromptPane({
 }: PromptPaneProps) {
   const [draft, setDraft] = useState("");
   const busy = running || Boolean(submitting);
-  const canSubmit = draft.trim().length > 0 && !busy;
+  const canSubmit = draft.trim().length > 0 && !busy && !blocked;
 
   function submit() {
     if (!canSubmit) {
@@ -67,7 +69,7 @@ export function PromptPane({
             submit();
           }
         }}
-        disabled={busy}
+        disabled={busy || blocked}
         rows={5}
       />
       {examMode ? (
@@ -99,7 +101,7 @@ export function PromptPane({
       {error ? <div className={styles.error}>{error}</div> : null}
       {/* Practice mode: full score + every-case verdict + feedback. */}
       {!examMode && result?.solved ? (
-        <div className={styles.solved}>맞았습니다 · {result.score.total}점</div>
+        <div className={styles.solved}>맞았습니다 · {result.score?.total}점</div>
       ) : null}
       {!examMode ? <VerdictLedger turn={latestTurn} running={running} /> : null}
       {!examMode && latestTurn && !latestTurn.solved && latestTurn.feedback ? (

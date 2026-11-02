@@ -36,7 +36,15 @@ class FeatureResultOut(BaseModel):
     raw_result: dict | None
 
 
+class SubmissionStatusOut(BaseModel):
+    feature_key: str
+    status: str
+    error: str | None
+    accepted_at: datetime
+
+
 class ExamResultDetail(AttemptSummary):
     """A single attempt with its five feature results."""
 
     features: list[FeatureResultOut]
+    submissions: list[SubmissionStatusOut]
