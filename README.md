@@ -126,6 +126,10 @@ AI Agent로 코드를 작성하는 시대가 열리면서, 전통적인 코딩�
 
 ---
 
+## 배포 준비
+
+- [PostgreSQL 접근 제한·S3 백업·복구 검증](deploy/postgres/README.md)
+
 ## 참고 자료 (References)
 
 - 논문: *When Code Becomes Abundant: Redefining Software Engineering Around Orchestration and Verification*
