@@ -60,14 +60,6 @@ class _FakeSpecResult:
         return {"total_score": self.score.total, "score": {"total": self.score.total}}
 
 
-class _FakeDevResult:
-    def __init__(self, total: float) -> None:
-        self.score = SimpleNamespace(total=total)  # 0–100; adapter scales to 0–1
-
-    def model_dump(self) -> dict:
-        return {"solved": True, "score": {"total": self.score.total}}
-
-
 @pytest.fixture
 def mock_all_llm(monkeypatch, mock_judge):
     """Patch every feature's LLM seam (rejection / spec / dev) and force the
@@ -78,12 +70,18 @@ def mock_all_llm(monkeypatch, mock_judge):
         return GenerationOutput(
             items=[
                 GeneratedItem(
-                    id="item-1", text="Use a fresh NoSQL store", is_flawed=True,
-                    flaw_type="wrong_tech", explanation="hidden",
+                    id="item-1",
+                    text="Use a fresh NoSQL store",
+                    is_flawed=True,
+                    flaw_type="wrong_tech",
+                    explanation="hidden",
                 ),
                 GeneratedItem(
-                    id="item-2", text="Return the top-N by churn score", is_flawed=False,
-                    flaw_type="none", explanation="hidden",
+                    id="item-2",
+                    text="Return the top-N by churn score",
+                    is_flawed=False,
+                    flaw_type="none",
+                    explanation="hidden",
                 ),
             ]
         )
@@ -92,21 +90,33 @@ def mock_all_llm(monkeypatch, mock_judge):
         return JudgeOutput(
             report="stub",
             judgements=[
-                ItemJudgement(item_id=i.id, in_requirements=(i.id == "item-2"))
-                for i in items
+                ItemJudgement(item_id=i.id, in_requirements=(i.id == "item-2")) for i in items
             ],
         )
 
     async def fake_spec_evaluate(task, instruction):
         return _FakeSpecResult(total=80.0)
 
-    def fake_dev_evaluate(problem, prompts, *, client=None, **kwargs):
-        return _FakeDevResult(total=90.0)
+    def fake_dev_turn(problem, turns, prompt, client):
+        from feature_dev_prompting.models import CaseResult, TurnResult
+
+        return TurnResult(
+            turn=len(turns) + 1,
+            prompt=prompt,
+            code="def solution(): return 1",
+            passed_count=1,
+            total=1,
+            solved=True,
+            feedback="stub",
+            case_results=[
+                CaseResult(index=0, hidden=False, passed=True, status="pass", expected="1", got="1")
+            ],
+        )
 
     monkeypatch.setattr(rej_service, "generate_design", fake_generate_design)
     monkeypatch.setattr(rej_service, "judge_attempt", fake_judge_attempt)
     monkeypatch.setattr(exam_router, "spec_evaluate", fake_spec_evaluate)
-    monkeypatch.setattr(exam_router, "dev_evaluate", fake_dev_evaluate)
+    monkeypatch.setattr(exam_router.dev_sessions, "execute_turn", fake_dev_turn)
 
     app.dependency_overrides[get_context_client] = lambda: None
     app.dependency_overrides[get_solver_client] = lambda: object()
@@ -161,6 +171,14 @@ async def _run_full_flow(client) -> tuple[str, list[dict]]:
             assert gen_body["items"]
             for item in gen_body["items"]:
                 assert set(item.keys()) == {"id", "text"}
+
+        if step == "dev_prompting":
+            run = await client.post(
+                f"/api/mock-exam/attempts/{attempt_id}/dev-run",
+                json={"prompt": _STEP_INPUT[step]["prompts"][0], "turn": 1},
+            )
+            assert run.status_code == 200, run.text
+            seen.append(run.json())
 
         submit = await client.post(
             f"/api/mock-exam/attempts/{attempt_id}/steps/{step}/submit",
@@ -241,3 +259,18 @@ async def test_unknown_attempt_returns_404(client, mock_all_llm):
 async def test_start_rejects_unknown_candidate(client):
     resp = await client.post("/api/mock-exam/start", json={"candidate_code": "NOPE"})
     assert resp.status_code == 400
+
+
+async def test_exam_session_cannot_use_practice_apis(client, mock_all_llm):
+    response = await client.post("/api/mock-exam/start", json={"candidate_code": CANDIDATE})
+    aid = response.json()["attempt_id"]
+    paths = [
+        ("post", f"/api/rejection-eval/sessions/{aid}/topics/3/generate", {"prompt": "x"}),
+        ("post", f"/api/rejection-eval/sessions/{aid}/topics/3/submit", {"flagged_ids": []}),
+        ("post", f"/api/rejection-eval/sessions/{aid}/score", {}),
+        ("get", f"/api/rejection-eval/sessions/{aid}/result", None),
+    ]
+    for method, path, body in paths:
+        kwargs = {} if body is None else {"json": body}
+        denied = await getattr(client, method)(path, **kwargs)
+        assert denied.status_code == 403

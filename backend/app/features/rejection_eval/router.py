@@ -1,9 +1,10 @@
 """HTTP routes for the rejection-ability evaluation feature."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.features.mock_exam.models import ExamAttempt
 from app.features.rejection_eval import service
 from app.features.rejection_eval.schemas import (
     CreateSessionRequest,
@@ -14,6 +15,15 @@ from app.features.rejection_eval.schemas import (
     SubmitRequest,
     SubmitResponse,
 )
+
+
+async def require_practice_session(
+    session_id: str,
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    if await db.get(ExamAttempt, session_id) is not None:
+        raise HTTPException(status_code=403, detail="exam sessions are not practice sessions")
+
 
 router = APIRouter(prefix="/api/rejection-eval", tags=["rejection-eval"])
 
@@ -28,6 +38,7 @@ async def create_session(
 @router.post(
     "/sessions/{session_id}/topics/{topic_index}/generate",
     response_model=GenerateResponse,
+    dependencies=[Depends(require_practice_session)],
 )
 async def generate(
     session_id: str,
@@ -41,6 +52,7 @@ async def generate(
 @router.post(
     "/sessions/{session_id}/topics/{topic_index}/submit",
     response_model=SubmitResponse,
+    dependencies=[Depends(require_practice_session)],
 )
 async def submit(
     session_id: str,
@@ -51,15 +63,19 @@ async def submit(
     return await service.submit_for_topic(db, session_id, topic_index, req)
 
 
-@router.post("/sessions/{session_id}/score", response_model=ResultResponse)
-async def score(
-    session_id: str, db: AsyncSession = Depends(get_session)
-) -> ResultResponse:
+@router.post(
+    "/sessions/{session_id}/score",
+    response_model=ResultResponse,
+    dependencies=[Depends(require_practice_session)],
+)
+async def score(session_id: str, db: AsyncSession = Depends(get_session)) -> ResultResponse:
     return await service.score_session(db, session_id)
 
 
-@router.get("/sessions/{session_id}/result", response_model=ResultResponse)
-async def result(
-    session_id: str, db: AsyncSession = Depends(get_session)
-) -> ResultResponse:
+@router.get(
+    "/sessions/{session_id}/result",
+    response_model=ResultResponse,
+    dependencies=[Depends(require_practice_session)],
+)
+async def result(session_id: str, db: AsyncSession = Depends(get_session)) -> ResultResponse:
     return await service.get_result(db, session_id)

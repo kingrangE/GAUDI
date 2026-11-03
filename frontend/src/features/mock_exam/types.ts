@@ -20,6 +20,7 @@ export interface AttemptStatus {
   current_step: string | null;
   remaining_seconds: number;
   status: "in_progress" | "finished" | "completed";
+  submissions?: Record<string, string>;
 }
 
 export interface RejectionItem {

@@ -4,11 +4,12 @@ Read-only: lists candidates and mock-exam attempts and serves a single
 attempt's breakdown. Practice results are never reachable here because every
 query is rooted at `exam_attempts`.
 
-Guarded by an optional shared secret (`X-Admin-Token` vs `ADMIN_TOKEN`); open
-when unset so the demo works without configuration.
+Requires a configured shared secret (`X-Admin-Token` vs `ADMIN_TOKEN`).
 """
 
 from __future__ import annotations
+
+from secrets import compare_digest
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +27,7 @@ from app.features.mock_exam.schemas import (
 async def require_admin(x_admin_token: str | None = Header(default=None)) -> None:
     """Reject requests when ADMIN_TOKEN is configured and the header mismatches."""
     expected = get_settings().admin_token
-    if expected and x_admin_token != expected:
+    if not expected or not compare_digest((x_admin_token or "").encode(), expected.encode()):
         raise HTTPException(status_code=401, detail="invalid admin token")
 
 

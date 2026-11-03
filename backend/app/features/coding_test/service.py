@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.coding_test import tasks
 from app.features.coding_test.grading import run_test_cases
 from app.features.coding_test.models import Problem, Submission, TestCase
-from app.features.coding_test.runner import CodeRunner, SubprocessCodeRunner
+from app.features.coding_test.runner import CodeRunner, DockerCodeRunner
 from app.features.coding_test.schemas import (
     CaseRunResult,
     CreateSubmissionRequest,
@@ -30,7 +30,7 @@ from app.features.coding_test.schemas import (
 )
 
 # Default runner; monkeypatched in tests.
-runner: CodeRunner = SubprocessCodeRunner()
+runner: CodeRunner = DockerCodeRunner()
 
 
 async def _get_problem(db: AsyncSession, problem_id: str) -> Problem:

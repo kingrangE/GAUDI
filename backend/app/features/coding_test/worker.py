@@ -9,11 +9,11 @@ import asyncio
 
 from app.db.session import AsyncSessionLocal
 from app.features.coding_test import grading
-from app.features.coding_test.runner import SubprocessCodeRunner
+from app.features.coding_test.runner import DockerCodeRunner
 
 
 async def _grade(submission_id: str) -> None:
-    runner = SubprocessCodeRunner()
+    runner = DockerCodeRunner()
     async with AsyncSessionLocal() as db:
         await grading.grade_submission(db, submission_id, runner)
 

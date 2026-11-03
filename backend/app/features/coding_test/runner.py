@@ -1,42 +1,26 @@
-"""Pluggable code execution: the `CodeRunner` interface + a subprocess impl.
-
-The MVP runs untrusted candidate Python in a sandboxed child process (hard
-wall-clock timeout, `resource` limits, no network, temp cwd). The interface is
-the seam: a Docker/Piston-backed runner can replace `SubprocessCodeRunner`
-later without touching grading or the API.
-
-SECURITY: the subprocess sandbox is defense-in-depth, NOT airtight isolation.
-It suits a proctored/trusted-candidate demo; never expose it to the open
-internet as-is. See backend/CLAUDE.md.
-"""
+"""Execute untrusted Python only inside a restricted, disposable container."""
 
 from __future__ import annotations
 
 import json
 import subprocess
-import sys
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path
+from threading import Event, Thread
 from typing import Any, Protocol
+from uuid import uuid4
 
-# Standalone sandbox script (stdlib-only) invoked by path so it runs under
-# `python -I` (isolated mode strips cwd/PYTHONPATH, so it must not import `app`).
-_SANDBOX_SCRIPT = str(Path(__file__).parent / "sandbox.py")
+from app.core.config import get_settings
 
 DEFAULT_TIMEOUT_S = 5.0
 DEFAULT_MEM_LIMIT_MB = 256
+MAX_OUTPUT_BYTES = 1024 * 1024
+STARTUP_TIMEOUT_S = 10
+_READY = b"GAUDI_READY\n"
 
 
 @dataclass(frozen=True)
 class ExecResult:
-    """Outcome of running the candidate function once for a single case.
-
-    `ok` means the function returned a JSON-serializable value (in `value`).
-    `error` classifies a failure: "timeout" | "mle" | "missing_function" |
-    "bad_output" | "exception: <Type>: <msg>" | "crashed".
-    """
-
     ok: bool
     value: Any = None
     error: str | None = None
@@ -53,9 +37,11 @@ class CodeRunner(Protocol):
     ) -> ExecResult: ...
 
 
-class SubprocessCodeRunner:
-    """Runs each case in an isolated `python -I` subprocess via sandbox.py."""
+class SandboxUnavailable(RuntimeError):
+    """Infrastructure failure; never grade this as an incorrect candidate answer."""
 
+
+class DockerCodeRunner:
     def execute(
         self,
         code: str,
@@ -64,6 +50,33 @@ class SubprocessCodeRunner:
         timeout_s: float = DEFAULT_TIMEOUT_S,
         mem_limit_mb: int = DEFAULT_MEM_LIMIT_MB,
     ) -> ExecResult:
+        name = f"gaudi-sandbox-{uuid4().hex}"
+        command = [
+            "docker",
+            "run",
+            "--name",
+            name,
+            "--pull=never",
+            "-i",
+            "--network=none",
+            "--read-only",
+            "--cap-drop=ALL",
+            "--security-opt=no-new-privileges",
+            "--user=65534:65534",
+            "--pids-limit=32",
+            f"--memory={mem_limit_mb}m",
+            f"--memory-swap={mem_limit_mb}m",
+            "--cpus=1",
+            "--ulimit",
+            "fsize=1048576:1048576",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=16m",
+            "--log-driver=none",
+            get_settings().sandbox_image,
+            "python",
+            "-I",
+            "/sandbox.py",
+        ]
         payload = json.dumps(
             {
                 "code": code,
@@ -71,30 +84,78 @@ class SubprocessCodeRunner:
                 "args": args,
                 "mem_limit_mb": mem_limit_mb,
             }
-        )
-        with tempfile.TemporaryDirectory() as tmp:
+        ).encode()
+        output = bytearray()
+        started, ready = Event(), Event()
+
+        with tempfile.TemporaryFile() as source:
+            source.write(payload)
+            source.seek(0)
             try:
-                proc = subprocess.run(
-                    [sys.executable, "-I", _SANDBOX_SCRIPT],
-                    input=payload,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_s,
-                    cwd=tmp,
+                proc = subprocess.Popen(
+                    command,
+                    stdin=source,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
                 )
+            except OSError as exc:
+                raise SandboxUnavailable("Docker sandbox is unavailable") from exc
+
+            def read_output():
+                header = proc.stdout.readline(len(_READY) + 1)
+                if header == _READY:
+                    ready.set()
+                else:
+                    output.extend(header)
+                started.set()
+                output.extend(proc.stdout.read(MAX_OUTPUT_BYTES + 1 - len(output)))
+                if len(output) > MAX_OUTPUT_BYTES:
+                    proc.kill()
+
+            reader = Thread(target=read_output, daemon=True)
+            reader.start()
+            timed_out = False
+            try:
+                if not started.wait(STARTUP_TIMEOUT_S):
+                    proc.kill()
+                    proc.wait()
+                    raise SandboxUnavailable("Docker sandbox startup timed out")
+                if not ready.is_set():
+                    proc.wait(timeout=1)
+                    raise SandboxUnavailable("Docker sandbox did not become ready")
+                proc.wait(timeout=timeout_s)
             except subprocess.TimeoutExpired:
-                return ExecResult(ok=False, error="timeout")
+                timed_out = True
+                proc.kill()
+                proc.wait()
+            finally:
+                # Killing the Docker client alone leaves its container running.
+                try:
+                    subprocess.run(
+                        ["docker", "rm", "--force", name],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        timeout=10,
+                        check=True,
+                    )
+                except (OSError, subprocess.TimeoutExpired, subprocess.CalledProcessError) as exc:
+                    raise SandboxUnavailable("Cannot confirm sandbox cleanup") from exc
+                finally:
+                    reader.join(timeout=2)
+                    proc.stdout.close()
 
-        line = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
-        if not line:
-            # No structured output → killed by a resource limit or crashed.
-            err = "mle" if proc.returncode and proc.returncode < 0 else "crashed"
-            return ExecResult(ok=False, error=err)
+        if timed_out:
+            return ExecResult(False, error="timeout")
+        if len(output) > MAX_OUTPUT_BYTES:
+            return ExecResult(False, error="output_limit")
+        if proc.returncode in (125, 126, 127):
+            raise SandboxUnavailable("Docker sandbox image or daemon is unavailable")
+        if proc.returncode != 0:
+            return ExecResult(False, error="crashed")
         try:
-            out = json.loads(line)
-        except json.JSONDecodeError:
-            return ExecResult(ok=False, error="crashed")
-
-        if out.get("ok"):
-            return ExecResult(ok=True, value=out.get("value"))
-        return ExecResult(ok=False, error=out.get("error") or "crashed")
+            result = json.loads(output)
+            if not isinstance(result, dict) or not isinstance(result.get("ok"), bool):
+                raise ValueError("invalid sandbox response")
+        except (ValueError, UnicodeDecodeError):
+            return ExecResult(False, error="bad_output")
+        return ExecResult(result["ok"], result.get("value"), result.get("error"))

@@ -1,6 +1,6 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ResultsTable } from "@/components/admin/ResultsTable";
-import { fetchExamResults } from "@/lib/adminApi";
+import { fetchExamResults } from "@/lib/adminQueries";
 
 import styles from "../sections.module.css";
 

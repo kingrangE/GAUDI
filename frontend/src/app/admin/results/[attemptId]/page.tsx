@@ -1,12 +1,13 @@
+import { fetchExamResult } from "@/lib/adminQueries";
 import { notFound } from "next/navigation";
 
+import { RetryGradingButton } from "@/components/admin/RetryGradingButton";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { FeaturePanel } from "@/components/admin/FeaturePanel";
 import { Badge, Metric } from "@/components/ui";
 import {
   EXAM_FLOW,
   STEP_LABELS,
-  fetchExamResult,
   formatElapsed,
   formatScore,
   statusLabel,
@@ -137,6 +138,24 @@ export default async function AttemptResultPage({ params }: AttemptResultPagePro
           </div>
         </section>
       ) : null}
+
+      {(detail.submissions?.length ?? 0) > 0 && (
+        <section aria-label="답안 접수 및 채점 상태" className={styles.panel}>
+          <h2>답안 접수 및 채점 상태</h2>
+          <p>미제출 영역은 0점입니다. 채점 실패 영역은 원본을 보존하며, 복구 전 시험을 완료하지 않습니다.</p>
+          <ul>
+            {detail.submissions!.map((submission) => (
+              <li key={submission.feature_key}>
+                {STEP_LABELS[submission.feature_key]}: {submission.status === "graded" ? "채점 완료" : submission.status === "failed" ? "채점 실패" : "채점 대기/진행 중"}
+                {submission.error && ` (${submission.error})`}
+                {submission.status !== "graded" && detail.status === "in_progress" && (
+                  <RetryGradingButton attemptId={attemptId} featureKey={submission.feature_key} />
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Rich per-feature panels */}
       <div className="grid gap-5" aria-label="단계별 상세 결과">

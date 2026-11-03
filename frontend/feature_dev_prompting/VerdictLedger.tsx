@@ -1,9 +1,9 @@
-import type { TurnResult } from "./types";
+import type { TurnView } from "./types";
 import { verdictFor } from "./verdict";
 import styles from "./workspace.module.css";
 
 interface VerdictLedgerProps {
-  turn: TurnResult | null;
+  turn: TurnView | null;
   running: boolean;
   /** When true: show only the visible (non-hidden) test cases. Used in exam mode
    *  where hidden cases stay reserved for the server-side 제출 scoring. */
@@ -18,8 +18,8 @@ export function VerdictLedger({ turn, running, publicOnly }: VerdictLedgerProps)
     return <div className={styles.ledgerEmpty}>채점 결과가 여기에 표시됩니다.</div>;
   }
   const cases = publicOnly ? turn.case_results.filter((c) => !c.hidden) : turn.case_results;
-  const passed = publicOnly ? cases.filter((c) => c.passed).length : turn.passed_count;
-  const total = publicOnly ? cases.length : turn.total;
+  const passed = publicOnly ? cases.filter((c) => c.passed).length : (turn.passed_count ?? cases.filter((c) => c.passed).length);
+  const total = publicOnly ? cases.length : (turn.total ?? cases.length);
   return (
     <div className={styles.ledger} aria-label="채점 결과">
       <div className={styles.ledgerSummary}>

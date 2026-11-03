@@ -25,19 +25,22 @@ from sqlalchemy.orm import selectinload
 
 from app.features.mock_exam.candidates import (
     CANDIDATES,
+    MOCK_EXAM_FEATURES,
     candidate_label,
     feature_label,
     is_candidate,
     is_mock_exam_feature,
 )
-from app.features.mock_exam.models import ExamAttempt, ExamFeatureResult
+from app.features.mock_exam.models import ExamAttempt, ExamFeatureResult, ExamSubmission
 from app.features.mock_exam.normalize import normalize_score
 from app.features.mock_exam.schemas import (
     AttemptSummary,
     CandidateSummary,
     ExamResultDetail,
     FeatureResultOut,
+    SubmissionStatusOut,
 )
+from feature_dev_prompting.sessions import DevRun
 
 
 def _now() -> datetime:
@@ -77,9 +80,17 @@ async def record_feature_result(
     if not is_mock_exam_feature(feature_key):
         raise ValueError(f"not a mock-exam feature: {feature_key!r}")
 
-    attempt = await db.get(ExamAttempt, attempt_id)
+    attempt = await db.scalar(
+        select(ExamAttempt)
+        .where(ExamAttempt.id == attempt_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if attempt is None:
         raise ValueError(f"unknown exam attempt: {attempt_id!r}")
+
+    if attempt.status != "in_progress":
+        raise ValueError("exam attempt is already completed")
 
     normalized = normalize_score(feature_key, raw_result)
 
@@ -116,14 +127,33 @@ async def finalize_exam_attempt(db: AsyncSession, attempt_id: str) -> ExamAttemp
         select(ExamAttempt)
         .where(ExamAttempt.id == attempt_id)
         .options(selectinload(ExamAttempt.feature_results))
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if attempt is None:
         raise ValueError(f"unknown exam attempt: {attempt_id!r}")
 
-    scores = [r.normalized_score for r in attempt.feature_results]
-    attempt.overall_normalized = (
-        round(sum(scores) / len(scores), 1) if scores else None
+    if attempt.status == "completed":
+        return attempt
+    unfinished = await db.scalar(
+        select(ExamSubmission.id)
+        .where(
+            ExamSubmission.exam_attempt_id == attempt_id,
+            ExamSubmission.status != "graded",
+        )
+        .limit(1)
     )
+    pending_run = await db.scalar(
+        select(DevRun.id).where(
+            DevRun.exam_attempt_id == attempt_id,
+            DevRun.status != "idle",
+        )
+    )
+    if unfinished or pending_run:
+        raise ValueError("retry unfinished grading before finishing the exam")
+
+    scores = [r.normalized_score for r in attempt.feature_results]
+    attempt.overall_normalized = round(sum(scores) / len(MOCK_EXAM_FEATURES), 1)
     attempt.status = "completed"
     attempt.completed_at = _now()
     await db.commit()
@@ -201,4 +231,21 @@ async def get_exam_result(db: AsyncSession, attempt_id: str) -> ExamResultDetail
         for r in attempt.feature_results
     ]
     summary = _to_summary(attempt)
-    return ExamResultDetail(**summary.model_dump(), features=features)
+    submissions = await db.scalars(
+        select(ExamSubmission).where(
+            ExamSubmission.exam_attempt_id == attempt_id,
+        )
+    )
+    return ExamResultDetail(
+        **summary.model_dump(),
+        features=features,
+        submissions=[
+            SubmissionStatusOut(
+                feature_key=row.feature_key,
+                status=row.status,
+                error=row.error,
+                accepted_at=row.accepted_at,
+            )
+            for row in submissions
+        ],
+    )

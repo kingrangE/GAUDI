@@ -29,9 +29,7 @@ async def test_problem_detail_hides_ground_truth(coding_client):
 
 
 async def test_run_executes_samples(coding_client):
-    ok = await coding_client.post(
-        f"{BASE}/problems/two-sum/run", json={"code": _REF["two-sum"]}
-    )
+    ok = await coding_client.post(f"{BASE}/problems/two-sum/run", json={"code": _REF["two-sum"]})
     assert ok.status_code == 200
     results = ok.json()["results"]
     assert len(results) == 2
@@ -111,15 +109,26 @@ async def test_unknown_problem_is_404(coding_client):
 
 
 async def test_unknown_submission_is_404(coding_client):
-    assert (
-        await coding_client.get(f"{BASE}/submissions/does-not-exist")
-    ).status_code == 404
+    assert (await coding_client.get(f"{BASE}/submissions/does-not-exist")).status_code == 404
 
 
 async def test_missing_fields_are_422(coding_client):
-    assert (
-        await coding_client.post(f"{BASE}/problems/two-sum/run", json={})
-    ).status_code == 422
+    assert (await coding_client.post(f"{BASE}/problems/two-sum/run", json={})).status_code == 422
     assert (
         await coding_client.post(f"{BASE}/submissions", json={"problem_id": "two-sum"})
     ).status_code == 422
+
+
+async def test_sandbox_infrastructure_error_returns_503(coding_client, monkeypatch):
+    from app.features.coding_test import service
+    from app.features.coding_test.runner import SandboxUnavailable
+
+    def unavailable(*args, **kwargs):
+        raise SandboxUnavailable("test infrastructure failure")
+
+    monkeypatch.setattr(service.runner, "execute", unavailable)
+    response = await coding_client.post(
+        "/api/coding-test/problems/two-sum/run", json={"code": "def solution(*args): return []"}
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Code execution sandbox is unavailable"

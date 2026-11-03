@@ -1,3 +1,4 @@
+import { fetchCandidates, fetchExamResult } from "@/lib/adminQueries";
 import { CheckCircle2, Clock, Gauge } from "lucide-react";
 import Link from "next/link";
 
@@ -8,8 +9,6 @@ import { USER_CODES } from "@/lib/accessCodes";
 import {
   EXAM_FLOW,
   MINI_STEP_LABELS,
-  fetchCandidates,
-  fetchExamResult,
   formatElapsed,
   formatScore,
   statusLabel,

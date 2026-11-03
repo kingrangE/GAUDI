@@ -1,8 +1,10 @@
+import { requireAdminSession } from "./adminSessionServer";
+import { fetchCandidates, fetchExamResult } from "./adminQueries";
+vi.mock("./adminSessionServer", () => ({ requireAdminSession: vi.fn() }));
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  fetchCandidates,
-  fetchExamResult,
   formatScore,
   formatTime,
   sortAttempts,
@@ -91,4 +93,12 @@ describe("formatters", () => {
     expect(statusLabel("completed")).toBe("완료");
     expect(statusLabel("in_progress")).toBe("진행 중");
   });
+});
+
+
+it("checks the caller session before fetching administrator data", async () => {
+  const fetchMock = mockFetch([]);
+  vi.mocked(requireAdminSession).mockRejectedValueOnce(new Error("login required"));
+  await expect(fetchCandidates()).rejects.toThrow("login required");
+  expect(fetchMock).not.toHaveBeenCalled();
 });

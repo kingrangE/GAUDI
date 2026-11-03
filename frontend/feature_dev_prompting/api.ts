@@ -1,6 +1,6 @@
 // HTTP client for the dev-prompting backend. The client never calls an LLM directly.
 
-import type { EvaluationResult, ProblemPublic } from "./types";
+import type { EvaluationResult, EvaluationView, ProblemPublic } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
@@ -31,4 +31,19 @@ export async function runEvaluation(
     body: JSON.stringify({ problem_id: problemId, prompts }),
   });
   return readJson<EvaluationResult>(res);
+}
+
+
+export async function createRun(problemId: string): Promise<EvaluationView> {
+  return readJson(await fetch(`${API_BASE}/dev-prompting/runs`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ problem_id: problemId }),
+  }));
+}
+
+export async function runTurn(runId: string, prompt: string, turn: number): Promise<EvaluationView> {
+  return readJson(await fetch(`${API_BASE}/dev-prompting/runs/${runId}/turns`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, turn }),
+  }));
 }
