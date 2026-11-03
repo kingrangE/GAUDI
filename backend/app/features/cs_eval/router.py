@@ -11,6 +11,8 @@ from app.features.cs_eval.schemas import (
     SessionCreated,
     SessionResult,
 )
+from feature_demo.models import DemoSession
+from feature_demo.session import current_demo_session
 
 router = APIRouter(prefix="/api/cs-eval", tags=["cs-eval"])
 
@@ -26,9 +28,10 @@ async def list_questions(db: AsyncSession = Depends(get_session)) -> list[Questi
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def create_session(
-    req: CreateSessionRequest, db: AsyncSession = Depends(get_session)
+    req: CreateSessionRequest, db: AsyncSession = Depends(get_session),
+    visitor: DemoSession | None = Depends(current_demo_session),
 ) -> SessionCreated:
-    return await service.create_session(db, req)
+    return await service.create_session(db, req, owner_id=visitor.id if visitor else None)
 
 
 @router.get("/sessions/{session_id}", response_model=SessionResult)

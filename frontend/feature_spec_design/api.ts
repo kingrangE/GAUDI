@@ -1,3 +1,5 @@
+import { demoFetch } from "@/features/demo/session";
+
 // HTTP client for the spec-design backend. The client never calls an LLM directly.
 
 import type { EvaluationResult, TaskPublic } from "./types";
@@ -12,7 +14,7 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 export async function fetchTasks(): Promise<TaskPublic[]> {
-  const res = await fetch(`${API_BASE}/spec-design/tasks`);
+  const res = await demoFetch(`${API_BASE}/spec-design/tasks`);
   return readJson<TaskPublic[]>(res);
 }
 
@@ -20,7 +22,7 @@ export async function runEvaluation(
   taskId: string,
   instruction: string,
 ): Promise<EvaluationResult> {
-  const res = await fetch(`${API_BASE}/spec-design/evaluate`, {
+  const res = await demoFetch(`${API_BASE}/spec-design/evaluate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ task_id: taskId, instruction }),

@@ -5,17 +5,23 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { getUserCode } from "@/lib/accessCodes";
+import { ensureDemoSession, isDemoEnabled } from "@/features/demo/session";
 
-/**
- * Light entry guard: the user area is reachable only after a user code was
- * entered at the gate. Without one (e.g. a direct URL hit), bounce back to `/`.
- * This is access separation, not authentication — login lands later.
- */
+/** Demo entry uses the server cookie; legacy entry keeps the local code gate. */
 export default function UserLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
+    if (isDemoEnabled()) {
+      let active = true;
+      ensureDemoSession().then(() => {
+        if (active) setAllowed(true);
+      }).catch(() => {
+        if (active) router.replace("/");
+      });
+      return () => { active = false; };
+    }
     if (getUserCode()) {
       setAllowed(true);
     } else {

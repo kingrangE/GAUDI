@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from feature_demo.models import DemoSession
+from feature_demo.session import bind_resource, current_demo_session
 from feature_dev_prompting import sessions
 from feature_dev_prompting.evaluator import evaluate
 from feature_dev_prompting.models import EvaluationResult, ProblemPublic
@@ -66,11 +68,16 @@ class TurnRequest(BaseModel):
 
 
 @router.post("/runs")
-async def create_run(req: CreateRunRequest, db: AsyncSession = Depends(get_session)) -> dict:
+async def create_run(
+    req: CreateRunRequest, db: AsyncSession = Depends(get_session),
+    visitor: DemoSession | None = Depends(current_demo_session),
+) -> dict:
     if get_problem(req.problem_id) is None:
         raise HTTPException(status_code=404, detail="unknown problem_id")
     run = sessions.DevRun(problem_id=req.problem_id)
     db.add(run)
+    await db.flush()
+    bind_resource(db, visitor.id if visitor else None, "dev_prompting", run.id)
     await db.commit()
     await db.refresh(run)
     return sessions.result(run)

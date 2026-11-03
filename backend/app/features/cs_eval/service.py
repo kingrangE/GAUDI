@@ -20,6 +20,7 @@ from app.features.cs_eval.schemas import (
     SessionCreated,
     SessionResult,
 )
+from feature_demo.session import bind_resource
 
 
 async def list_questions(db: AsyncSession) -> list[QuestionPublic]:
@@ -33,7 +34,7 @@ async def list_questions(db: AsyncSession) -> list[QuestionPublic]:
 
 
 async def create_session(
-    db: AsyncSession, req: CreateSessionRequest
+    db: AsyncSession, req: CreateSessionRequest, *, owner_id: str | None = None
 ) -> SessionCreated:
     rows = await db.execute(select(CsQuestion))
     questions = {q.id: q for q in rows.scalars()}
@@ -55,6 +56,7 @@ async def create_session(
                 ordinal=questions[answer.question_id].ordinal,
             )
         )
+    bind_resource(db, owner_id, "cs_eval", session.id)
     await db.commit()
 
     session_id = session.id

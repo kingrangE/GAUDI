@@ -14,6 +14,8 @@ from app.features.coding_test.schemas import (
     SubmissionCreated,
     SubmissionResult,
 )
+from feature_demo.models import DemoSession
+from feature_demo.session import current_demo_session
 
 router = APIRouter(prefix="/api/coding-test", tags=["coding-test"])
 
@@ -43,9 +45,10 @@ async def run(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def create_submission(
-    req: CreateSubmissionRequest, db: AsyncSession = Depends(get_session)
+    req: CreateSubmissionRequest, db: AsyncSession = Depends(get_session),
+    visitor: DemoSession | None = Depends(current_demo_session),
 ) -> SubmissionCreated:
-    return await service.create_submission(db, req)
+    return await service.create_submission(db, req, owner_id=visitor.id if visitor else None)
 
 
 @router.get("/submissions/{submission_id}", response_model=SubmissionResult)

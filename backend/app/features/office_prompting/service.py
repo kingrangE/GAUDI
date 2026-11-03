@@ -25,6 +25,7 @@ from app.features.office_prompting.schemas import (
     RunResponse,
 )
 from app.features.office_prompting.scoring import aggregate, score_id_set
+from feature_demo.session import bind_resource
 
 MAX_RUNS = 3
 
@@ -58,7 +59,9 @@ def _dataset_payload() -> list[DatasetTable]:
     ]
 
 
-async def create_session(db: AsyncSession, candidate_name: str) -> CreateSessionResponse:
+async def create_session(
+    db: AsyncSession, candidate_name: str, *, owner_id: str | None = None
+) -> CreateSessionResponse:
     session = OfficeSession(candidate_name=candidate_name)
     db.add(session)
     await db.flush()  # assign session.id before linking attempts
@@ -70,6 +73,7 @@ async def create_session(db: AsyncSession, candidate_name: str) -> CreateSession
                 problem_title=problem.title,
             )
         )
+    bind_resource(db, owner_id, "office_prompting", session.id)
     await db.commit()
     return CreateSessionResponse(
         session_id=session.id,
