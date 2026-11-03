@@ -1,3 +1,5 @@
+import { demoFetch } from "@/features/demo/session";
+
 // HTTP client for the context-engineering backend. The client never calls an LLM directly.
 
 import type { EvaluationReport, Project, Submission } from "./types";
@@ -13,17 +15,17 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 export async function fetchProjects(): Promise<Project[]> {
-  const res = await fetch(`${API_BASE}${PREFIX}/projects`);
+  const res = await demoFetch(`${API_BASE}${PREFIX}/projects`);
   return readJson<Project[]>(res);
 }
 
 export async function fetchProject(projectId: string): Promise<Project> {
-  const res = await fetch(`${API_BASE}${PREFIX}/projects/${encodeURIComponent(projectId)}`);
+  const res = await demoFetch(`${API_BASE}${PREFIX}/projects/${encodeURIComponent(projectId)}`);
   return readJson<Project>(res);
 }
 
 export async function submitClaudeMd(submission: Submission): Promise<EvaluationReport> {
-  const res = await fetch(`${API_BASE}${PREFIX}/submissions`, {
+  const res = await demoFetch(`${API_BASE}${PREFIX}/submissions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(submission),

@@ -28,6 +28,7 @@ from app.features.coding_test.schemas import (
     SubmissionCreated,
     SubmissionResult,
 )
+from feature_demo.session import bind_resource
 
 # Default runner; monkeypatched in tests.
 runner: CodeRunner = DockerCodeRunner()
@@ -91,7 +92,7 @@ async def run_code(db: AsyncSession, problem_id: str, code: str) -> RunResponse:
 
 
 async def create_submission(
-    db: AsyncSession, req: CreateSubmissionRequest
+    db: AsyncSession, req: CreateSubmissionRequest, *, owner_id: str | None = None
 ) -> SubmissionCreated:
     await _get_problem(db, req.problem_id)  # 404 if unknown
     submission = Submission(
@@ -99,6 +100,7 @@ async def create_submission(
     )
     db.add(submission)
     await db.flush()
+    bind_resource(db, owner_id, "coding_test", submission.id)
     await db.commit()
     submission_id = submission.id
     # PR-A: inline grading (returns once graded). The response still reports the

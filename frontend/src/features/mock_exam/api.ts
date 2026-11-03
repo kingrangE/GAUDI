@@ -1,3 +1,5 @@
+import { demoFetch } from "@/features/demo/session";
+
 import type { EvaluationView } from "../../../feature_dev_prompting/types";
 
 // Thin client for the /api/mock-exam backend.
@@ -12,7 +14,7 @@ import type {
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await demoFetch(`${BASE}${path}`, {
     method: body === undefined ? "GET" : "POST",
     headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,

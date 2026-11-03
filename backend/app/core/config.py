@@ -8,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolve `.env` against the backend root (this file is backend/app/core/config.py),
@@ -63,6 +64,11 @@ class Settings(BaseSettings):
 
     # Required secret for the admin API; empty denies every admin request.
     admin_token: str = ""
+
+    # Portfolio sessions are separate from the existing candidate-code workflow.
+    demo_enabled: bool = False
+    demo_session_seconds: int = Field(default=7200, gt=0)
+    demo_cookie_secure: bool = True
 
     # Background grading. "inline" runs grading in-process (default; used by
     # tests and a no-broker setup); "rq" enqueues to an RQ worker via Redis.

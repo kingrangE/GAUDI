@@ -21,6 +21,7 @@ from app.features.test_design.schemas import (
     ResultProblem,
     ResultResponse,
 )
+from feature_demo.session import bind_resource
 
 
 class SessionNotFound(Exception):
@@ -42,9 +43,13 @@ def public_problems() -> list[ProblemPublic]:
     ]
 
 
-async def create_session(db: AsyncSession, candidate_name: str) -> CreateSessionResponse:
+async def create_session(
+    db: AsyncSession, candidate_name: str, *, owner_id: str | None = None
+) -> CreateSessionResponse:
     session = TestDesignSession(candidate_name=candidate_name)
     db.add(session)
+    await db.flush()
+    bind_resource(db, owner_id, "test_design", session.id)
     await db.commit()
     await db.refresh(session)
     return CreateSessionResponse(

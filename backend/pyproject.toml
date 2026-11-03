@@ -55,6 +55,7 @@ py-modules = ["demo_solutions", "worker"]
 include = [
     "app*",
     "feature_dev_prompting*",
+    "feature_demo*",
     "feature_spec_design*",
     "feature_context_engineering*",
     "llm*",

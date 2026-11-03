@@ -12,15 +12,20 @@ from app.features.office_prompting.schemas import (
     RunRequest,
     RunResponse,
 )
+from feature_demo.models import DemoSession
+from feature_demo.session import current_demo_session
 
 router = APIRouter(prefix="/api/office-prompting", tags=["office-prompting"])
 
 
 @router.post("/sessions", response_model=CreateSessionResponse)
 async def create_session(
-    req: CreateSessionRequest, db: AsyncSession = Depends(get_session)
+    req: CreateSessionRequest, db: AsyncSession = Depends(get_session),
+    visitor: DemoSession | None = Depends(current_demo_session),
 ) -> CreateSessionResponse:
-    return await service.create_session(db, req.candidate_name)
+    return await service.create_session(
+        db, req.candidate_name, owner_id=visitor.id if visitor else None
+    )
 
 
 @router.post(

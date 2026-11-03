@@ -14,9 +14,23 @@ vi.mock("next/navigation", () => ({
 afterEach(() => {
   push.mockClear();
   clearUserCode();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("EntryGate", () => {
+  it("opens the public hub without an entry code after server session issuance", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEMO_ENABLED", "true");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ session_id: "visitor", expires_at: "later" }),
+    }));
+    const user = userEvent.setup();
+    render(<EntryGate />);
+    await user.click(screen.getByRole("button", { name: "둘러보기" }));
+    expect(push).toHaveBeenCalledWith("/user");
+    expect(getUserCode()).toBeNull();
+  });
+
   it("routes ADMIN to the admin console", async () => {
     const user = userEvent.setup();
     render(<EntryGate />);

@@ -1,3 +1,5 @@
+import { demoFetch } from "@/features/demo/session";
+
 // Typed fetch wrappers for the cs-eval backend. No LLM calls here — the
 // frontend only talks to the FastAPI backend.
 
@@ -7,7 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 const PREFIX = "/api/cs-eval";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await demoFetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });

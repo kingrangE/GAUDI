@@ -12,15 +12,20 @@ from app.features.test_design.schemas import (
     SubmitRequest,
     SubmitResponse,
 )
+from feature_demo.models import DemoSession
+from feature_demo.session import current_demo_session
 
 router = APIRouter(prefix="/test-design", tags=["test-design"])
 
 
 @router.post("/sessions", response_model=CreateSessionResponse, status_code=201)
 async def create_session(
-    req: CreateSessionRequest, db: AsyncSession = Depends(get_session)
+    req: CreateSessionRequest, db: AsyncSession = Depends(get_session),
+    visitor: DemoSession | None = Depends(current_demo_session),
 ) -> CreateSessionResponse:
-    return await services.create_session(db, req.candidate_name)
+    return await services.create_session(
+        db, req.candidate_name, owner_id=visitor.id if visitor else None
+    )
 
 
 @router.post(

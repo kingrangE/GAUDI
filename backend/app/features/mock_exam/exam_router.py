@@ -66,6 +66,8 @@ from feature_context_engineering import (
     get_project as ctx_get_project,
 )
 from feature_context_engineering.evaluate import build_report as ctx_build_report
+from feature_demo.models import DemoSession
+from feature_demo.session import bind_resource, current_demo_session
 from feature_dev_prompting import sessions as dev_sessions
 
 # dev_prompting
@@ -400,9 +402,22 @@ router = APIRouter(prefix="/api/mock-exam", tags=["mock-exam"])
 
 
 @router.post("/start", response_model=StartResponse)
-async def start(body: StartRequest, db: AsyncSession = Depends(get_session)) -> StartResponse:
+async def start(
+    body: StartRequest, db: AsyncSession = Depends(get_session),
+    visitor: DemoSession | None = Depends(current_demo_session),
+) -> StartResponse:
     try:
-        attempt = await create_exam_attempt(db, body.candidate_code)
+        if visitor:
+            attempt = ExamAttempt(
+                candidate_code=f"DEMO-{visitor.id}", candidate_label="포트폴리오 체험",
+                status="in_progress",
+            )
+            db.add(attempt)
+            await db.flush()
+            bind_resource(db, visitor.id, "mock_exam", attempt.id)
+            await db.commit()
+        else:
+            attempt = await create_exam_attempt(db, body.candidate_code)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return StartResponse(

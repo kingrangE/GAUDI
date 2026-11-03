@@ -1,3 +1,5 @@
+import { demoFetch } from "@/features/demo/session";
+
 // HTTP client for the dev-prompting backend. The client never calls an LLM directly.
 
 import type { EvaluationResult, EvaluationView, ProblemPublic } from "./types";
@@ -12,12 +14,12 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 export async function fetchProblems(): Promise<ProblemPublic[]> {
-  const res = await fetch(`${API_BASE}/dev-prompting/problems`);
+  const res = await demoFetch(`${API_BASE}/dev-prompting/problems`);
   return readJson<ProblemPublic[]>(res);
 }
 
 export async function fetchProblem(problemId: string): Promise<ProblemPublic> {
-  const res = await fetch(`${API_BASE}/dev-prompting/problems/${problemId}`);
+  const res = await demoFetch(`${API_BASE}/dev-prompting/problems/${problemId}`);
   return readJson<ProblemPublic>(res);
 }
 
@@ -25,7 +27,7 @@ export async function runEvaluation(
   problemId: string,
   prompts: string[],
 ): Promise<EvaluationResult> {
-  const res = await fetch(`${API_BASE}/dev-prompting/evaluate`, {
+  const res = await demoFetch(`${API_BASE}/dev-prompting/evaluate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ problem_id: problemId, prompts }),
@@ -35,14 +37,14 @@ export async function runEvaluation(
 
 
 export async function createRun(problemId: string): Promise<EvaluationView> {
-  return readJson(await fetch(`${API_BASE}/dev-prompting/runs`, {
+  return readJson(await demoFetch(`${API_BASE}/dev-prompting/runs`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ problem_id: problemId }),
   }));
 }
 
 export async function runTurn(runId: string, prompt: string, turn: number): Promise<EvaluationView> {
-  return readJson(await fetch(`${API_BASE}/dev-prompting/runs/${runId}/turns`, {
+  return readJson(await demoFetch(`${API_BASE}/dev-prompting/runs/${runId}/turns`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, turn }),
   }));

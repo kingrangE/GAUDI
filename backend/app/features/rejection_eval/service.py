@@ -26,6 +26,7 @@ from app.features.rejection_eval.schemas import (
 )
 from app.features.rejection_eval.scoring import aggregate, score_items
 from app.features.rejection_eval.topics import TOPIC_COUNT, TOPICS
+from feature_demo.session import bind_resource
 
 
 async def _get_session(db: AsyncSession, session_id: str) -> RejectionSession:
@@ -51,7 +52,7 @@ async def _get_attempt(db: AsyncSession, session_id: str, topic_index: int) -> R
 
 
 async def create_session(
-    db: AsyncSession, candidate_name: str | None = None
+    db: AsyncSession, candidate_name: str | None = None, *, owner_id: str | None = None
 ) -> CreateSessionResponse:
     name = (candidate_name or "").strip() or "익명"
     session = RejectionSession(candidate_name=name)
@@ -63,6 +64,7 @@ async def create_session(
                 session_id=session.id, topic_index=index, topic_title=topic.title
             )
         )
+    bind_resource(db, owner_id, "rejection_eval", session.id)
     await db.commit()
     return CreateSessionResponse(
         session_id=session.id,
