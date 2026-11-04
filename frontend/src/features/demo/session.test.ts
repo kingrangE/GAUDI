@@ -67,3 +67,15 @@ describe("demo session client", () => {
     expect(fetchMock).toHaveBeenCalledWith("/public");
   });
 });
+
+it.each([
+  [429, "demo daily budget is exhausted", "예산"],
+  [429, "demo queue is full; retry later", "요청이 많습니다"],
+  [409, "this feature already has a demo attempt", "체험이 이미 시작"],
+])("explains demo rejection %s without leaking backend policy internals", async (status, detail, expected) => {
+  vi.stubGlobal("fetch", vi.fn()
+    .mockResolvedValueOnce(response({ session_id: "visitor" }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ detail }), { status })));
+  const { demoFetch } = await import("./session");
+  await expect(demoFetch("/evaluate", { method: "POST" })).rejects.toThrow(expected);
+});

@@ -67,6 +67,17 @@ async def recover_jobs(db: AsyncSession, after: str | None = None) -> dict:
         broker_job = await asyncio.to_thread(queue.fetch_job, f"demo-{job.id}")
         status = await asyncio.to_thread(broker_job.get_status) if broker_job else None
         if status in {"failed", "stopped", "canceled", "finished"}:
+            from feature_demo.limits import enabled
+            from feature_demo.models import DemoSlot
+
+            held = (
+                await db.scalar(select(DemoSlot).where(DemoSlot.job_id == job.id))
+                if enabled()
+                else None
+            )
+            if held:
+                unresolved += 1
+                continue
             result = await db.execute(
                 update(DemoJob)
                 .where(

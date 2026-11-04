@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UsageNotice } from "@/features/demo/UsageNotice";
 
 const ENTRIES = [
   {
@@ -22,6 +23,7 @@ const ENTRIES = [
 export default function UserHubPage() {
   return (
     <div className="py-10">
+      <UsageNotice />
       <section>
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-600">GAUDI · 응시자</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink-900">무엇을 진행할까요?</h1>

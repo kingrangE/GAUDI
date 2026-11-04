@@ -98,3 +98,15 @@ describe("queued native requests", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+it.each([[429, "허용된 실행량"], [413, "입력이 너무 큽니다"]])(
+  "explains execution-time policy rejection %s", async (status, message) => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(response({ job_id: id }, 202))
+      .mockResolvedValueOnce(response({ status: "failed", error_status: status })));
+    const { queuedFetch } = await import("./jobs");
+    const result = await queuedFetch(url, init, "owner");
+    expect(result.status).toBe(status);
+    expect((await result.json()).detail).toContain(message);
+  },
+);

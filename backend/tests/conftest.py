@@ -14,6 +14,9 @@ import os
 # if a developer exports a real key, it wins and the gated integration tests run.
 os.environ.setdefault("OPENAI_API_KEY", "")
 os.environ["ADMIN_TOKEN"] = "test-admin-token"
+os.environ["DEMO_LIMITS_ENABLED"] = (
+    "false"  # Legacy regressions; policy tests explicitly enable it.
+)
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402

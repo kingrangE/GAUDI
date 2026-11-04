@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 
 from app.judge.consensus import tally
 from feature_context_engineering.models import (
@@ -187,6 +188,7 @@ def coverage_consensus(
 
     criteria = criteria if criteria is not None else get_rubric(project.id)
     runs = max(1, runs)
+
     # The runs are independent samples of the same judge — run them concurrently instead of
     # sequentially. The OpenAI client is a blocking call, so a thread pool overlaps the
     # network waits (3 sequential calls -> ~1 call of wall-clock). Order is irrelevant since
@@ -198,7 +200,8 @@ def coverage_consensus(
         samples = [_one(0)]
     else:
         with ThreadPoolExecutor(max_workers=runs) as pool:
-            samples = list(pool.map(_one, range(runs)))
+            futures = [pool.submit(copy_context().run, _one, index) for index in range(runs)]
+            samples = [future.result() for future in futures]
 
     majority: list[CriterionVerdict] = []
     results: list[CriterionResult] = []

@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -29,7 +30,26 @@ def evaluate_context(payload: dict, progress) -> dict:
 
 
 async def run_job(job_id: str, maker: async_sessionmaker) -> None:
+    from feature_demo import limits, slots
+
+    slot = None
     lease = uuid4().hex
+    if limits.enabled():
+        slot = await slots.acquire(maker, "evaluation", job_id, lease)
+    try:
+        task = asyncio.create_task(_run_job(job_id, maker, lease))
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            # Shielding alone is insufficient: wait for actual threads and containers to finish.
+            await task
+            raise
+    finally:
+        if slot is not None:
+            await slots.release(maker, "evaluation", slot, lease)
+
+
+async def _run_job(job_id: str, maker: async_sessionmaker, lease: str) -> None:
     now = datetime.now(timezone.utc)
     async with maker() as db:
         owner_alive = (
@@ -106,7 +126,9 @@ async def run_job(job_id: str, maker: async_sessionmaker) -> None:
         # Only the event loop opens DB sessions; evaluation threads never share an AsyncSession.
         asyncio.run_coroutine_threadsafe(save_progress(phase, completed, total), loop).result()
 
-    token = execution.set(Execution(owner_id, maker, accepted_at, loop, save_progress))
+    token = execution.set(
+        Execution(owner_id, maker, accepted_at, loop, save_progress, job_id, lease)
+    )
     try:
         if (feature, action) == ("context_engineering", "evaluate"):
             result = await asyncio.to_thread(evaluate_context, payload, progress)
@@ -124,12 +146,29 @@ async def run_job(job_id: str, maker: async_sessionmaker) -> None:
             error_code="request_rejected",
             result={"status_code": exc.status},
         )
+    except HTTPException as exc:
+        values = dict(
+            status="failed",
+            phase="failed",
+            error_code="request_rejected",
+            result={"status_code": exc.status_code},
+        )
     except Exception:
         # Provider messages can include prompts/keys. Persist only a public error code.
         values = dict(status="failed", phase="failed", error_code="evaluation_failed")
     finally:
         execution.reset(token)
     async with maker() as db:
+        from feature_demo import limits
+
+        if limits.enabled():
+            from feature_demo.meter import close_inflight
+
+            await close_inflight(db, job_id)
+        if limits.enabled() and values["status"] == "completed":
+            current = await db.get(DemoJob, job_id, populate_existing=True)
+            if current.status == "running" and current.lease == lease:
+                await limits.finish_attempt(db, current, result)
         await db.execute(
             update(DemoJob)
             .where(
