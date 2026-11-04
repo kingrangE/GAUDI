@@ -35,6 +35,7 @@ from app.features.rejection_eval.router import router as rejection_eval_router
 from app.features.test_design import models as _test_design_models  # noqa: F401  (register tables)
 from app.features.test_design.routes import router as test_design_router
 from feature_context_engineering.router import router as context_engineering_router
+from feature_demo.job_router import router as demo_job_router
 from feature_demo.router import router as demo_router
 from feature_demo.session import protect_resources
 from feature_dev_prompting.api import get_solver_client
@@ -85,6 +86,7 @@ app.include_router(
 app.include_router(mock_exam_admin_router)
 app.include_router(mock_exam_exam_router, dependencies=[Depends(protect_resources("mock_exam"))])
 app.include_router(demo_router)
+app.include_router(demo_job_router)
 
 
 @app.get("/health")

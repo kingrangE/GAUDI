@@ -8,6 +8,7 @@ behavioral correctness/efficiency deltas are too noisy for a single live run (ke
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
 from feature_context_engineering.judge import (
@@ -35,6 +36,8 @@ def build_report(
     submission: Submission,
     client: LLMClient | None = None,
     coverage_runs: int = DEFAULT_COVERAGE_RUNS,
+    *,
+    on_progress: Callable[[str, int, int], None] | None = None,
 ) -> EvaluationReport:
     """Score the submission across the four axes and return the weighted composite.
 
@@ -45,6 +48,8 @@ def build_report(
 
     grounding = grounding_dimension(project, submission)
     efficiency = efficiency_dimension(submission)
+    if on_progress:
+        on_progress("static_checks", 2, 4)
 
     results: list[CriterionResult] = []
     if client is not None:
@@ -58,7 +63,11 @@ def build_report(
             )
             boundary_future = pool.submit(boundary_dimension, client, project, submission)
             coverage, results = coverage_future.result()
+            if on_progress:
+                on_progress("coverage", 3, 4)
             boundary = boundary_future.result()
+            if on_progress:
+                on_progress("boundary", 4, 4)
     else:
         coverage = DimensionScore(
             key="coverage", label="컨벤션·모호성 커버리지", weight=COVERAGE_WEIGHT,
