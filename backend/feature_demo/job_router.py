@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.features.mock_exam.router import require_admin
-from feature_context_engineering.models import EvaluationReport
 from feature_demo.dispatch import dispatch_job, recover_jobs
 from feature_demo.jobs import CreateJob, JobState, accept_job, job_state, owned_job
 from feature_demo.models import DemoSession
@@ -60,7 +59,7 @@ async def read_job(
     return job_state(await owned_job(db, job_id, visitor.id))
 
 
-@router.get("/{job_id}/result", response_model=EvaluationReport)
+@router.get("/{job_id}/result")
 async def read_result(
     job_id: str,
     visitor: DemoSession = Depends(require_visitor),

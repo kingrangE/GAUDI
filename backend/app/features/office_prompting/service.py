@@ -25,6 +25,7 @@ from app.features.office_prompting.schemas import (
     RunResponse,
 )
 from app.features.office_prompting.scoring import aggregate, score_id_set
+from feature_demo.execution import advance
 from feature_demo.session import bind_resource
 
 MAX_RUNS = 3
@@ -103,6 +104,7 @@ async def run_for_problem(
 
     problem = PROBLEMS[problem_index]
     output = await extract_ids(problem, req.prompt)
+    await advance("extracting_data", 1, 2)
     # Drop hallucinated / out-of-universe ids so they can't unfairly tank precision.
     valid = datasets.existing_ids(problem.target_table)
     predicted_ids = [i for i in dict.fromkeys(output.ids) if i in valid]

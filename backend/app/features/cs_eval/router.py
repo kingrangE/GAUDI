@@ -12,9 +12,10 @@ from app.features.cs_eval.schemas import (
     SessionResult,
 )
 from feature_demo.models import DemoSession
+from feature_demo.routing import DemoRoute
 from feature_demo.session import current_demo_session
 
-router = APIRouter(prefix="/api/cs-eval", tags=["cs-eval"])
+router = APIRouter(route_class=DemoRoute, prefix="/api/cs-eval", tags=["cs-eval"])
 
 
 @router.get("/questions", response_model=list[QuestionPublic])

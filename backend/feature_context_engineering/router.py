@@ -7,10 +7,13 @@ from fastapi import APIRouter, HTTPException
 from feature_context_engineering.evaluate import build_report
 from feature_context_engineering.models import EvaluationReport, Project, Submission
 from feature_context_engineering.service import create_submission, get_project, list_projects
+from feature_demo.routing import DemoRoute
 from llm.client import get_llm_client
 from llm.config import get_settings
 
-router = APIRouter(prefix="/api/context-engineering", tags=["context-engineering"])
+router = APIRouter(
+    route_class=DemoRoute, prefix="/api/context-engineering", tags=["context-engineering"]
+)
 
 
 @router.get("/projects", response_model=list[Project])

@@ -15,9 +15,10 @@ from app.features.coding_test.schemas import (
     SubmissionResult,
 )
 from feature_demo.models import DemoSession
+from feature_demo.routing import DemoRoute
 from feature_demo.session import current_demo_session
 
-router = APIRouter(prefix="/api/coding-test", tags=["coding-test"])
+router = APIRouter(route_class=DemoRoute, prefix="/api/coding-test", tags=["coding-test"])
 
 
 @router.get("/problems", response_model=list[ProblemSummary])

@@ -15,6 +15,7 @@ import re
 from collections import Counter
 
 from app.judge.consensus import tally
+from feature_demo.execution import advance
 from feature_spec_design.models import (
     QUALITY_SCORES,
     UNSPECIFIED,
@@ -120,8 +121,14 @@ def judge_sample(client: LLMClient, task: SpecTask, sample: Sample) -> SampleJud
 async def judge_all(
     client: LLMClient, task: SpecTask, samples: list[Sample]
 ) -> list[SampleJudgement]:
+    completed = 0
+
     async def one(s: Sample) -> SampleJudgement:
-        return await asyncio.to_thread(judge_sample, client, task, s)
+        nonlocal completed
+        result = await asyncio.to_thread(judge_sample, client, task, s)
+        completed += 1
+        await advance("analyzing_samples", len(samples) + completed, len(samples) * 2 + 1)
+        return result
 
     return list(await asyncio.gather(*(one(s) for s in samples)))
 

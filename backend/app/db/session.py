@@ -21,5 +21,9 @@ async def init_models() -> None:
 
 async def get_session() -> AsyncIterator[AsyncSession]:
     """FastAPI dependency yielding a transactional session."""
-    async with AsyncSessionLocal() as session:
+    from feature_demo.execution import execution
+
+    active = execution.get()
+    factory = active.sessions if active else AsyncSessionLocal
+    async with factory() as session:
         yield session

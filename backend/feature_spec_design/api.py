@@ -9,12 +9,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from feature_demo.routing import DemoRoute
 from feature_spec_design.evaluator import evaluate
 from feature_spec_design.models import EvaluationResult, TaskPublic
 from feature_spec_design.tasks import get_task, list_tasks
 from llm.client import LLMClient, get_gen_client, get_judge_client
 
-router = APIRouter(prefix="/spec-design", tags=["spec-design"])
+router = APIRouter(route_class=DemoRoute, prefix="/spec-design", tags=["spec-design"])
 
 
 def get_gen_dependency() -> LLMClient:

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./jobs", () => ({ queuedFetch: (url: string, init: RequestInit) => fetch(url, init) }));
+
 beforeEach(() => {
   vi.resetModules();
   vi.stubEnv("NEXT_PUBLIC_DEMO_ENABLED", "true");

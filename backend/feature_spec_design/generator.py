@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
+from feature_demo.execution import advance
 from feature_spec_design.models import Sample
 from llm.client import LLMClient
 
@@ -51,8 +52,14 @@ async def generate_samples(
     system = SYSTEM_PROMPT
     user = build_user_prompt(instruction)
 
+    completed = 0
+
     async def one() -> str:
-        return await asyncio.to_thread(client.complete, system, user, temperature=temperature)
+        nonlocal completed
+        result = await asyncio.to_thread(client.complete, system, user, temperature=temperature)
+        completed += 1
+        await advance("generating_samples", completed, n * 2 + 1)
+        return result
 
     contents = await asyncio.gather(*(one() for _ in range(n)))
     return [Sample(index=i, content=c) for i, c in enumerate(contents)]

@@ -13,9 +13,10 @@ from app.features.office_prompting.schemas import (
     RunResponse,
 )
 from feature_demo.models import DemoSession
+from feature_demo.routing import DemoRoute
 from feature_demo.session import current_demo_session
 
-router = APIRouter(prefix="/api/office-prompting", tags=["office-prompting"])
+router = APIRouter(route_class=DemoRoute, prefix="/api/office-prompting", tags=["office-prompting"])
 
 
 @router.post("/sessions", response_model=CreateSessionResponse)

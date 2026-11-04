@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.cs_eval import scoring
 from app.features.cs_eval.judge import judge_answer, synthesize_reports
 from app.features.cs_eval.models import CsAnswer, CsQuestion, CsSession
+from feature_demo.execution import advance, execution
 
 
 async def grade_session(db: AsyncSession, session_id: str) -> None:
@@ -30,15 +31,13 @@ async def grade_session(db: AsyncSession, session_id: str) -> None:
 
     try:
         rows = await db.execute(
-            select(CsAnswer)
-            .where(CsAnswer.session_id == session_id)
-            .order_by(CsAnswer.ordinal)
+            select(CsAnswer).where(CsAnswer.session_id == session_id).order_by(CsAnswer.ordinal)
         )
         answers = list(rows.scalars())
 
         per_question: list[dict] = []
         total = 0
-        for ans in answers:
+        for index, ans in enumerate(answers, 1):
             question = await db.get(CsQuestion, ans.question_id)
             judgement = await judge_answer(
                 domain=question.domain if question else "",
@@ -64,14 +63,21 @@ async def grade_session(db: AsyncSession, session_id: str) -> None:
                 }
             )
 
+            if execution.get():
+                await db.commit()
+            await advance("grading_answers", index, len(answers) + 1)
+
         session.total_score = total
         session.normalized_score = scoring.normalize(total, len(answers))
         reports = await synthesize_reports(per_question=per_question)
         session.summary_report = reports.summary_report
         session.analysis_report = reports.analysis_report
         session.status = "graded"
+        await advance("synthesizing_report", len(answers) + 1, len(answers) + 1)
     except Exception as exc:  # noqa: BLE001 — surface failure to the candidate
         session.status = "failed"
-        session.error = f"{type(exc).__name__}: {exc}"[:300]
+        session.error = (
+            "evaluation_failed" if execution.get() else f"{type(exc).__name__}: {exc}"[:300]
+        )
 
     await db.commit()

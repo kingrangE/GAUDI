@@ -5,6 +5,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
+from demo_helpers import resolve_demo_job
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -42,8 +43,20 @@ async def test_postgres_demo_session_owner_renewal_and_expiry(monkeypatch):
         app.dependency_overrides[get_session] = database
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
+            from feature_demo import dispatch
+
+            class Queue:
+                def enqueue(self, *args, **kwargs):
+                    pass
+
+            monkeypatch.setattr(dispatch, "get_demo_queue", lambda: Queue())
             visitor = (await client.post("/api/demo/session")).json()["session_id"]
-            created = await client.post("/test-design/sessions", json={"candidate_name": "x"})
+            created = await client.post(
+                "/test-design/sessions",
+                json={"candidate_name": "x"},
+                headers={"Idempotency-Key": uuid4().hex},
+            )
+            created = await resolve_demo_job(created, maker)
             assert created.status_code == 201
             native_id = created.json()["session_id"]
             async with maker() as db:

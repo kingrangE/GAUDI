@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from feature_demo.models import DemoSession
+from feature_demo.routing import DemoRoute
 from feature_demo.session import bind_resource, current_demo_session
 from feature_dev_prompting import sessions
 from feature_dev_prompting.evaluator import evaluate
@@ -18,7 +19,7 @@ from feature_dev_prompting.models import EvaluationResult, ProblemPublic
 from feature_dev_prompting.problems import get_problem, list_problems
 from llm.client import LLMClient, get_llm_client
 
-router = APIRouter(prefix="/dev-prompting", tags=["dev-prompting"])
+router = APIRouter(route_class=DemoRoute, prefix="/dev-prompting", tags=["dev-prompting"])
 
 
 def get_solver_client() -> LLMClient:

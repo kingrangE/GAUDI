@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from feature_context_engineering.evaluate import build_report
 from feature_context_engineering.models import EvaluationReport
 from feature_context_engineering.service import create_submission, get_project
+from feature_demo.execution import Execution, execution
 from feature_demo.models import DemoJob, DemoSession
 from llm.client import get_llm_client
 from llm.config import get_settings as get_llm_settings
@@ -76,18 +77,10 @@ async def run_job(job_id: str, maker: async_sessionmaker) -> None:
             return
         job = await db.get(DemoJob, job_id)
         feature, action, payload = job.feature, job.action, job.payload
+        owner_id, accepted_at = job.session_id, job.created_at
 
     async def save_progress(phase: str, completed: int, total: int) -> None:
-        if (
-            total != 4
-            or not 0 <= completed <= total
-            or phase
-            not in {
-                "static_checks",
-                "coverage",
-                "boundary",
-            }
-        ):
+        if total <= 0 or not 0 <= completed <= total or not phase or len(phase) > 40:
             raise ValueError("invalid progress event")
         async with maker() as db:
             await db.execute(
@@ -96,10 +89,13 @@ async def run_job(job_id: str, maker: async_sessionmaker) -> None:
                     DemoJob.id == job_id,
                     DemoJob.status == "running",
                     DemoJob.lease == lease,
-                    DemoJob.completed_units < completed,
+                    DemoJob.completed_units <= completed,
                 )
                 .values(
-                    phase=phase, completed_units=completed, updated_at=datetime.now(timezone.utc)
+                    phase=phase,
+                    completed_units=completed,
+                    total_units=total,
+                    updated_at=datetime.now(timezone.utc),
                 )
             )
             await db.commit()
@@ -110,18 +106,29 @@ async def run_job(job_id: str, maker: async_sessionmaker) -> None:
         # Only the event loop opens DB sessions; evaluation threads never share an AsyncSession.
         asyncio.run_coroutine_threadsafe(save_progress(phase, completed, total), loop).result()
 
+    token = execution.set(Execution(owner_id, maker, accepted_at, loop, save_progress))
     try:
-        if (feature, action) != ("context_engineering", "evaluate"):
-            raise ValueError("unsupported persisted job")
-        result = await asyncio.to_thread(evaluate_context, payload, progress)
-        report = EvaluationReport.model_validate(result)
-        if report.project_id != payload["project_id"] or not report.scored:
-            raise ValueError("report does not match the accepted evaluation")
-        result = report.model_dump(mode="json")
-        values = dict(status="completed", phase="completed", completed_units=4, result=result)
+        if (feature, action) == ("context_engineering", "evaluate"):
+            result = await asyncio.to_thread(evaluate_context, payload, progress)
+            report = EvaluationReport.model_validate(result)
+            if report.project_id != payload["project_id"] or not report.scored:
+                raise ValueError("report does not match the accepted evaluation")
+            result = report.model_dump(mode="json")
+        else:
+            result = await execute_native(feature, action, payload)
+        values = dict(status="completed", phase="completed", result=result)
+    except NativeRejected as exc:
+        values = dict(
+            status="failed",
+            phase="failed",
+            error_code="request_rejected",
+            result={"status_code": exc.status},
+        )
     except Exception:
         # Provider messages can include prompts/keys. Persist only a public error code.
         values = dict(status="failed", phase="failed", error_code="evaluation_failed")
+    finally:
+        execution.reset(token)
     async with maker() as db:
         await db.execute(
             update(DemoJob)
@@ -132,11 +139,52 @@ async def run_job(job_id: str, maker: async_sessionmaker) -> None:
             )
             .values(
                 **values,
+                completed_units=DemoJob.total_units
+                if values["status"] == "completed"
+                else DemoJob.completed_units,
                 finished_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc),
             )
         )
         await db.commit()
+
+
+class NativeRejected(Exception):
+    def __init__(self, status: int):
+        self.status = status
+
+
+async def execute_native(feature: str, action: str, payload: dict) -> dict:
+    import httpx
+
+    from app.main import app
+    from feature_demo.operations import operation_for
+
+    operation = operation_for(feature, action)
+    data = operation.validate(payload)
+    path = operation.path.format(**data.params)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://worker.internal"
+    ) as client:
+        response = await client.post(path, json=data.body)
+    if not response.is_success:
+        raise NativeRejected(response.status_code)
+    result = response.json()
+    if not isinstance(result, dict):
+        raise ValueError("invalid native evaluation result")
+    active = execution.get()
+    if feature in {"coding_test", "cs_eval"} and action in {"create_submission", "create_session"}:
+        from app.features.coding_test.models import Submission
+        from app.features.cs_eval.models import CsSession
+
+        model, key = (
+            (Submission, "submission_id") if feature == "coding_test" else (CsSession, "session_id")
+        )
+        async with active.sessions() as db:
+            native = await db.get(model, result[key])
+            if native is None or native.status != "graded":
+                raise NativeRejected(503)
+    return {"http_status": response.status_code, "body": result}
 
 
 def execute(job_id: str) -> None:

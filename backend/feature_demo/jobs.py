@@ -1,12 +1,12 @@
 """Durable acceptance, idempotency, and owner-scoped job reads."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from feature_context_engineering.models import Submission
 from feature_context_engineering.service import create_submission
 from feature_demo.models import DemoJob
+from feature_demo.operations import NativeInput, check_owner, operation_for
 
 
 class ContextInput(Submission):
@@ -24,9 +25,28 @@ class ContextInput(Submission):
 
 class CreateJob(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    feature: Literal["context_engineering"]
-    action: Literal["evaluate"]
-    input: ContextInput
+    feature: Literal[
+        "context_engineering",
+        "spec_design",
+        "dev_prompting",
+        "coding_test",
+        "cs_eval",
+        "test_design",
+        "rejection_eval",
+        "office_prompting",
+        "mock_exam",
+    ]
+    action: str
+    input: ContextInput | NativeInput
+
+    @model_validator(mode="after")
+    def validate_operation(self):
+        if (self.feature, self.action) == ("context_engineering", "evaluate"):
+            if not isinstance(self.input, ContextInput):
+                raise ValueError("context input required")
+        else:
+            self.input = operation_for(self.feature, self.action).validate(self.input.model_dump())
+        return self
 
 
 class JobState(BaseModel):
@@ -39,7 +59,11 @@ class JobState(BaseModel):
     completed_units: int = Field(ge=0)
     total_units: int = Field(gt=0)
     progress_percent: int = Field(ge=0, le=100)
-    error_code: Literal["evaluation_failed", "session_expired", "worker_interrupted"] | None
+    error_code: (
+        Literal["evaluation_failed", "session_expired", "worker_interrupted", "request_rejected"]
+        | None
+    )
+    error_status: int | None = None
     created_at: datetime
     updated_at: datetime
     started_at: datetime | None
@@ -47,13 +71,19 @@ class JobState(BaseModel):
 
 
 async def accept_job(db: AsyncSession, owner_id: str, key: str, body: CreateJob) -> DemoJob:
+    accepted_at = datetime.now(timezone.utc)
     serialized = json.dumps(body.model_dump(), sort_keys=True, ensure_ascii=False)
     digest = sha256(serialized.encode()).hexdigest()
     query = select(DemoJob).where(DemoJob.session_id == owner_id, DemoJob.idempotency_key == key)
     existing = await db.scalar(query)
     if existing is None:
         try:
-            create_submission(body.input.project_id, body.input.claude_md)
+            if isinstance(body.input, ContextInput):
+                create_submission(body.input.project_id, body.input.claude_md)
+            else:
+                await check_owner(
+                    db, owner_id, operation_for(body.feature, body.action), body.input
+                )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         job = DemoJob(
@@ -63,6 +93,8 @@ async def accept_job(db: AsyncSession, owner_id: str, key: str, body: CreateJob)
             feature=body.feature,
             action=body.action,
             payload=body.input.model_dump(),
+            total_units=4 if body.feature == "context_engineering" else 1,
+            created_at=accepted_at,
         )
         db.add(job)
         try:
@@ -105,6 +137,9 @@ def job_state(job: DemoJob) -> dict:
         "total_units": job.total_units,
         "progress_percent": percent,
         "error_code": job.error_code,
+        "error_status": job.result.get("status_code")
+        if job.status == "failed" and job.result
+        else None,
         "created_at": job.created_at,
         "updated_at": job.updated_at,
         "started_at": job.started_at,

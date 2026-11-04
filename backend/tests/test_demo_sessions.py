@@ -1,8 +1,10 @@
 """Public browsing and cross-visitor isolation through the assembled application."""
 
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import pytest
+from demo_helpers import resolve_demo_job
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -12,6 +14,27 @@ from app.features.office_prompting.models import OfficeSession
 from app.features.rejection_eval.models import RejectionSession
 from feature_demo.models import DemoResource, DemoSession
 from feature_demo.session import COOKIE_NAME, token_hash
+
+
+@pytest.fixture(name="client")
+async def native_browser(client, engine, monkeypatch):
+    from feature_demo import dispatch
+
+    class Queue:
+        def enqueue(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr(dispatch, "get_demo_queue", lambda: Queue())
+    original = client.post
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def post(url, **kwargs):
+        headers = {"Idempotency-Key": uuid4().hex, **kwargs.pop("headers", {})}
+        response = await original(url, headers=headers, **kwargs)
+        return await resolve_demo_job(response, maker)
+
+    monkeypatch.setattr(client, "post", post)
+    return client
 
 
 @pytest.fixture(autouse=True)
@@ -250,6 +273,12 @@ async def test_grading_resources_are_owned_before_dispatch_and_polling(
         owner = await db.get(DemoResource, (kind, resource_id))
         assert owner.session_id == visitor["session_id"]
         dispatched.append(resource_id)
+        from app.features.coding_test.models import Submission
+        from app.features.cs_eval.models import CsSession
+
+        native = await db.get(Submission if kind == "coding_test" else CsSession, resource_id)
+        native.status = "graded"
+        await db.commit()
 
     if kind == "coding_test":
         monkeypatch.setattr(coding_tasks, "enqueue_grading", enqueue)
