@@ -97,3 +97,12 @@ it("invalid results never become a live report", async () => {
   await expect(tracking.observe(id, owner)).rejects.toThrow("조회 연결");
   expect(tracking.getSnapshot()[0].result).toBeUndefined();
 });
+
+it("preserves session expiry at the result endpoint for the original caller", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(response({ status: "completed" }))
+    .mockResolvedValueOnce(response({}, 401)));
+  const tracking = await import("./tracking");
+  expect((await tracking.observe(id, owner)).status).toBe(401);
+  expect(tracking.getSnapshot()[0].result).toBeUndefined();
+  expect(tracking.getSnapshot()[0].error).toContain("세션이 만료");
+});

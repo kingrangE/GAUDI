@@ -62,6 +62,6 @@ AbortSignal, 저장된 본인 ID 복구, 전체 기능 결과 표시, 모의고�
 이 브랜치는 최신 main에서 시작했다. 시작 시 PR #67(비용·횟수 제한)이 OPEN이므로 해당 정책을 복사하지 않았다.
 공개 활성화 전 두 기능을 main에 통합해야 한다. `jobs.ts` 공통 변경은 병합 순서에 따라 재베이스/충돌 확인이 필요하다.
 
-최종 검증(2026-11-05): backend 540 passed / 12 skipped, frontend 259 passed.
+최종 검증(2026-11-05): backend 540 passed / 12 skipped, frontend 260 passed.
 ruff·ESLint·TypeScript·Next.js production build 통과. 실제 유료 LLM·EC2·브라우저 E2E 미실행.
 브라우저 연결 불가 및 native UI 도구 타임아웃으로 시각 검증은 완료하지 못했다.

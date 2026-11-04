@@ -95,7 +95,12 @@ async function poll(activity: Activity): Promise<Response> {
       }
       if (state.status === "completed") {
         const resultResponse = await fetch(`${endpoint}/result`, options);
-        if (!resultResponse.ok) throw new Error("result not available");
+        if (!resultResponse.ok) {
+          publish({ ...activity, error: resultResponse.status === 401
+            ? "체험 세션이 만료되었습니다. 다시 입장해 주세요."
+            : "저장된 결과를 가져오지 못했습니다. 조회를 다시 연결해 주세요." });
+          return resultResponse;
+        }
         const result = await resultResponse.json() as Activity["result"];
         if (!result || !Number.isInteger(result.http_status) || result.http_status < 200 ||
             result.http_status > 299 || !result.body || typeof result.body !== "object") {
