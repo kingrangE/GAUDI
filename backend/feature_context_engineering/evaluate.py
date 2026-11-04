@@ -28,6 +28,7 @@ from feature_context_engineering.static_checks import (
     efficiency_dimension,
     grounding_dimension,
 )
+from feature_demo.execution import advance_sync
 from llm.client import LLMClient
 
 
@@ -46,6 +47,7 @@ def build_report(
     can't swing a borderline criterion on a single roll.
     """
 
+    on_progress = on_progress or advance_sync
     grounding = grounding_dimension(project, submission)
     efficiency = efficiency_dimension(submission)
     if on_progress:

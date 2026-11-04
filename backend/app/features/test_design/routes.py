@@ -13,9 +13,10 @@ from app.features.test_design.schemas import (
     SubmitResponse,
 )
 from feature_demo.models import DemoSession
+from feature_demo.routing import DemoRoute
 from feature_demo.session import current_demo_session
 
-router = APIRouter(prefix="/test-design", tags=["test-design"])
+router = APIRouter(route_class=DemoRoute, prefix="/test-design", tags=["test-design"])
 
 
 @router.post("/sessions", response_model=CreateSessionResponse, status_code=201)

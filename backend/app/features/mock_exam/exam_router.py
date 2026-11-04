@@ -66,7 +66,9 @@ from feature_context_engineering import (
     get_project as ctx_get_project,
 )
 from feature_context_engineering.evaluate import build_report as ctx_build_report
+from feature_demo.execution import execution
 from feature_demo.models import DemoSession
+from feature_demo.routing import DemoRoute
 from feature_demo.session import bind_resource, current_demo_session
 from feature_dev_prompting import sessions as dev_sessions
 
@@ -173,7 +175,11 @@ def _remaining_seconds(attempt: ExamAttempt) -> int:
     started = attempt.started_at
     if started.tzinfo is None:  # SQLite may round-trip a naive datetime
         started = started.replace(tzinfo=timezone.utc)
-    elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+    active = execution.get()
+    accepted = active.accepted_at if active else datetime.now(timezone.utc)
+    if accepted.tzinfo is None:
+        accepted = accepted.replace(tzinfo=timezone.utc)
+    elapsed = max(0, (accepted - started).total_seconds())
     return max(0, ceil(EXAM_TOTAL_SECONDS - elapsed))
 
 
@@ -398,7 +404,7 @@ async def _score_step(
 # --------------------------------------------------------------------------- #
 # Router
 # --------------------------------------------------------------------------- #
-router = APIRouter(prefix="/api/mock-exam", tags=["mock-exam"])
+router = APIRouter(route_class=DemoRoute, prefix="/api/mock-exam", tags=["mock-exam"])
 
 
 @router.post("/start", response_model=StartResponse)

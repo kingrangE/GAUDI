@@ -22,6 +22,7 @@ from app.features.coding_test.runner import (
     DEFAULT_TIMEOUT_S,
     CodeRunner,
 )
+from feature_demo.execution import advance, advance_sync, execution
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,7 @@ def run_test_cases(
     thread so the event loop is not blocked.
     """
     outcomes: list[CaseOutcome] = []
-    for args, expected in cases:
+    for index, (args, expected) in enumerate(cases, 1):
         result = runner.execute(code, function_name, args, timeout_s, mem_limit_mb)
         if not result.ok:
             outcomes.append(CaseOutcome(passed=False, error=result.error))
@@ -69,6 +70,7 @@ def run_test_cases(
             outcomes.append(CaseOutcome(passed=True))
         else:
             outcomes.append(CaseOutcome(passed=False, error="wrong_answer"))
+        advance_sync("running_tests", index, len(cases) + 1)
     return outcomes
 
 
@@ -76,9 +78,7 @@ def _decode_cases(test_cases: list[TestCase]) -> list[tuple[list, object]]:
     return [(json.loads(tc.args_json), json.loads(tc.expected_json)) for tc in test_cases]
 
 
-async def grade_submission(
-    db: AsyncSession, submission_id: str, runner: CodeRunner
-) -> None:
+async def grade_submission(db: AsyncSession, submission_id: str, runner: CodeRunner) -> None:
     """Run hidden grading cases, write the deterministic test score.
 
     PR-B extends this to also populate the LLM-judge fields. On any runner
@@ -110,8 +110,7 @@ async def grade_submission(
 
         # LLM judge: code-quality report grounded on the deterministic score.
         case_breakdown = [
-            {"index": i, "passed": o.passed, "error": o.error}
-            for i, o in enumerate(outcomes)
+            {"index": i, "passed": o.passed, "error": o.error} for i, o in enumerate(outcomes)
         ]
         judgement = await judge_submission(
             title=problem.title,
@@ -129,8 +128,11 @@ async def grade_submission(
         submission.analysis_report = judgement.analysis_report
         submission.code_quality_score = judgement.code_quality_score
         submission.status = "graded"
+        await advance("code_analysis", len(cases) + 1, len(cases) + 1)
     except Exception as exc:  # noqa: BLE001 — surface failure to the candidate
         submission.status = "failed"
-        submission.error = f"{type(exc).__name__}: {exc}"[:300]
+        submission.error = (
+            "evaluation_failed" if execution.get() else f"{type(exc).__name__}: {exc}"[:300]
+        )
 
     await db.commit()

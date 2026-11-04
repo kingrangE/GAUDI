@@ -16,6 +16,7 @@ from app.features.rejection_eval.schemas import (
     SubmitResponse,
 )
 from feature_demo.models import DemoSession
+from feature_demo.routing import DemoRoute
 from feature_demo.session import current_demo_session
 
 
@@ -27,7 +28,7 @@ async def require_practice_session(
         raise HTTPException(status_code=403, detail="exam sessions are not practice sessions")
 
 
-router = APIRouter(prefix="/api/rejection-eval", tags=["rejection-eval"])
+router = APIRouter(route_class=DemoRoute, prefix="/api/rejection-eval", tags=["rejection-eval"])
 
 
 @router.post("/sessions", response_model=CreateSessionResponse)

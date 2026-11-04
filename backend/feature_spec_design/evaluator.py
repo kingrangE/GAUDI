@@ -6,6 +6,7 @@ async because the N generations and N judgements each run concurrently.
 
 from __future__ import annotations
 
+from feature_demo.execution import advance
 from feature_spec_design.analyzer import (
     DEFAULT_DIVERGENCE_THRESHOLD,
     DEFAULT_OVERENGINEERING_THRESHOLD,
@@ -50,6 +51,7 @@ async def evaluate(
         overengineering_threshold=overengineering_threshold,
     )
     score = score_spec(requirements, dimensions, overengineering)
+    await advance("aggregating_score", n * 2 + 1, n * 2 + 1)
 
     return EvaluationResult(
         task_id=task.id,

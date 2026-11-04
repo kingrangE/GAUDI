@@ -26,6 +26,7 @@ from app.features.rejection_eval.schemas import (
 )
 from app.features.rejection_eval.scoring import aggregate, score_items
 from app.features.rejection_eval.topics import TOPIC_COUNT, TOPICS
+from feature_demo.execution import advance
 from feature_demo.session import bind_resource
 
 
@@ -86,6 +87,7 @@ async def generate_for_topic(
 ) -> GenerateResponse:
     attempt = await _get_attempt(db, session_id, topic_index)
     output = await generate_design(attempt.topic_title, prompt)
+    await advance("generating_design", 1, 2)
     attempt.prompt = prompt
     attempt.generated_items = [item.model_dump() for item in output.items]
     await db.commit()
@@ -126,12 +128,13 @@ async def score_session(db: AsyncSession, session_id: str) -> ResultResponse:
         )
 
     per_attempt_scores: list[dict] = []
-    for attempt in completed:
+    for index, attempt in enumerate(completed, 1):
         items = [GeneratedItem(**i) for i in attempt.generated_items]
         flagged_ids = list(attempt.selections.get("flagged_ids", []))
         reasons = dict(attempt.selections.get("reasons", {}))
         requirements = list(TOPICS[attempt.topic_index].requirements)
         judge = await judge_attempt(requirements, items, flagged_ids, reasons)
+        await advance("grading_topics", index, len(completed) + 1)
         out_of_scope_ids = [
             j.item_id for j in judge.judgements if not j.in_requirements
         ]

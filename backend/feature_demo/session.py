@@ -39,6 +39,14 @@ async def find_session(request: Request, db: AsyncSession) -> DemoSession | None
 async def current_demo_session(
     request: Request, db: AsyncSession = Depends(get_session)
 ) -> DemoSession | None:
+    from feature_demo.execution import execution
+
+    active = execution.get()
+    if active:
+        visitor = await db.get(DemoSession, active.owner_id)
+        if visitor is None:
+            raise HTTPException(status_code=401, detail="demo session unavailable")
+        return visitor
     if not get_settings().demo_enabled:
         return None
     if request.method not in {"GET", "HEAD", "OPTIONS"}:

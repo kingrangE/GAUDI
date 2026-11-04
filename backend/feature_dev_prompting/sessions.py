@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from feature_demo.execution import advance_sync
 from feature_dev_prompting.evaluator import build_feedback
 from feature_dev_prompting.grader import evaluation_score, summarize_run
 from feature_dev_prompting.models import TurnResult
@@ -84,9 +85,11 @@ def execute_turn(problem, turns: list[dict], prompt: str, client) -> TurnResult:
         previous["code"] if previous else problem.starter_code,
         previous["feedback"] if previous else None,
     )
+    advance_sync("generating_code", 1, 2)
     cases = run_against_tests(
         code, problem.tests, problem.entry_point, time_limit=problem.time_limit_sec
     )
+    advance_sync("testing_turn", 2, 2)
     passed, total = summarize_run(cases)
     return TurnResult(
         turn=len(turns) + 1,

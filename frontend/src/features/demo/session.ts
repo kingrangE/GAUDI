@@ -1,3 +1,5 @@
+import { queuedFetch } from "./jobs";
+
 export function isDemoEnabled(): boolean {
   return process.env.NEXT_PUBLIC_DEMO_ENABLED === "true";
 }
@@ -29,8 +31,11 @@ export function ensureDemoSession(): Promise<DemoSession> {
 
 export async function demoFetch(url: string, init?: RequestInit): Promise<Response> {
   if (!isDemoEnabled()) return init === undefined ? fetch(url) : fetch(url, init);
-  await ensureDemoSession();
-  const response = await fetch(url, { ...init, credentials: "include" });
+  const visitor = await ensureDemoSession();
+  const options: RequestInit = { ...init, credentials: "include" };
+  const response = init?.method?.toUpperCase() === "POST"
+    ? await queuedFetch(url, options, visitor.session_id)
+    : await fetch(url, options);
   if (response.status === 401) {
     sessionRequest = null;
     throw new Error("체험 세션이 만료되었습니다. 입장 화면에서 다시 시작해 주세요.");

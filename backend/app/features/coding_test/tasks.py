@@ -13,12 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.features.coding_test import grading
 from app.features.coding_test.runner import CodeRunner
+from feature_demo.execution import execution
 
 
 async def enqueue_grading(
     db: AsyncSession, submission_id: str, runner: CodeRunner
 ) -> None:
-    if get_settings().grading_mode == "rq":
+    if get_settings().grading_mode == "rq" and execution.get() is None:
         # Imported lazily so the inline path never needs redis/rq installed-and-up.
         from app.queue import get_queue
 

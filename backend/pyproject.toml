@@ -13,6 +13,7 @@ dependencies = [
     "openai>=1.40",
     "redis",
     "rq>=3.0",
+    "httpx",
     "tiktoken",
 ]
 

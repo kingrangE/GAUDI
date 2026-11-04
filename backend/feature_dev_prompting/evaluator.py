@@ -7,6 +7,7 @@ unit tests can mock them.
 
 from __future__ import annotations
 
+from feature_demo.execution import advance_sync
 from feature_dev_prompting.grader import evaluation_score, summarize_run
 from feature_dev_prompting.models import CaseResult, EvaluationResult, Problem, TurnResult
 from feature_dev_prompting.sandbox import run_against_tests
@@ -41,6 +42,7 @@ def evaluate(problem: Problem, prompts: list[str], *, client: LLMClient | None =
     current_code = problem.starter_code  # the function as it currently stands; edited each turn
     for idx, prompt in enumerate(prompts[:limit], start=1):
         code = generate_code(client, problem, prompt, current_code, feedback)
+        advance_sync("generating_code", (idx - 1) * 2 + 1, min(len(prompts), limit) * 2)
         case_results = runner(
             code, problem.tests, problem.entry_point, time_limit=problem.time_limit_sec
         )
@@ -59,6 +61,7 @@ def evaluate(problem: Problem, prompts: list[str], *, client: LLMClient | None =
                 case_results=case_results,
             )
         )
+        advance_sync("testing_turn", idx * 2, min(len(prompts), limit) * 2)
         current_code = code  # next turn edits whatever the agent just produced
         if solved:
             break

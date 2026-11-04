@@ -21,6 +21,7 @@ from app.features.test_design.schemas import (
     ResultProblem,
     ResultResponse,
 )
+from feature_demo.execution import advance
 from feature_demo.session import bind_resource
 
 
@@ -76,6 +77,7 @@ async def submit_problem(
     problem = get_problem(problem_index)
 
     judged = await judge_submission(problem, flaws)
+    await advance("matching_flaws", 1, 2)
     gt_flaws = [asdict(f) for f in problem.flaws]
     matches = [m.model_dump() for m in judged.matches]
     score = scoring.score_submission(
