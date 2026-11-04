@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     demo_enabled: bool = False
     demo_session_seconds: int = Field(default=7200, gt=0)
     demo_cookie_secure: bool = True
+    demo_job_timeout_seconds: int = Field(default=900, gt=0)
 
     # Background grading. "inline" runs grading in-process (default; used by
     # tests and a no-broker setup); "rq" enqueues to an RQ worker via Redis.

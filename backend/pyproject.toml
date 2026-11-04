@@ -12,7 +12,7 @@ dependencies = [
     "pydantic-settings",
     "openai>=1.40",
     "redis",
-    "rq",
+    "rq>=3.0",
     "tiktoken",
 ]
 

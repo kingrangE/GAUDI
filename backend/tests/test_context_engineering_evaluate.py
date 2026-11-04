@@ -24,7 +24,10 @@ def test_without_client_runs_deterministic_axes_only():
     project = get_project("board-api")
     sub = Submission(project_id="board-api", claude_md=get_reference("board-api"))
 
-    report = build_report(project, sub, client=None)
+    events = []
+    report = build_report(
+        project, sub, client=None, on_progress=lambda *event: events.append(event)
+    )
     dims = {d.key: d for d in report.dimensions}
 
     assert report.scored is True
@@ -34,6 +37,7 @@ def test_without_client_runs_deterministic_axes_only():
     assert dims["efficiency"].available is True
     assert report.total > 0  # grounding + conciseness still produce a composite
     assert report.results == []
+    assert events == [("static_checks", 2, 4)]
 
 
 def test_with_client_composes_four_axes():
@@ -47,7 +51,13 @@ def test_with_client_composes_four_axes():
     coverage_raw = json.dumps([{"id": i, "covered": True, "evidence": marker} for i in ids])
     boundary_raw = json.dumps({"action": "refuse", "code": ""})
 
-    report = build_report(project, sub, FakeClient(coverage_raw, boundary_raw))
+    events = []
+    report = build_report(
+        project,
+        sub,
+        FakeClient(coverage_raw, boundary_raw),
+        on_progress=lambda *event: events.append(event),
+    )
     dims = {d.key: d for d in report.dimensions}
 
     assert all(dims[k].available for k in ("coverage", "grounding", "boundary", "efficiency"))
@@ -55,3 +65,4 @@ def test_with_client_composes_four_axes():
     assert dims["boundary"].score == 100.0
     assert report.results and {r.id for r in report.results} == set(ids)
     assert 0 < report.total <= 100
+    assert events == [("static_checks", 2, 4), ("coverage", 3, 4), ("boundary", 4, 4)]

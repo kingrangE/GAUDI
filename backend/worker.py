@@ -10,12 +10,15 @@ from rq import Queue, Worker
 
 import app.features.coding_test.models  # noqa: F401  (register tables on Base)
 from app.core.config import get_settings
-from app.queue import GRADING_QUEUE
+from app.queue import DEMO_QUEUE, GRADING_QUEUE
 
 
 def main() -> None:
     connection = Redis.from_url(get_settings().redis_url)
-    worker = Worker([Queue(GRADING_QUEUE, connection=connection)], connection=connection)
+    worker = Worker(
+        [Queue(name, connection=connection) for name in (GRADING_QUEUE, DEMO_QUEUE)],
+        connection=connection,
+    )
     worker.work()
 
 
