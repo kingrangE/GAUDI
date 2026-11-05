@@ -40,5 +40,17 @@ export async function demoFetch(url: string, init?: RequestInit): Promise<Respon
     sessionRequest = null;
     throw new Error("체험 세션이 만료되었습니다. 입장 화면에서 다시 시작해 주세요.");
   }
+  if ([409, 429, 503].includes(response.status)) {
+    const body = await response.clone().json().catch(() => null) as { detail?: string } | null;
+    const detail = body?.detail ?? "";
+    if (detail.startsWith("demo ") || detail.startsWith("this feature ") ||
+        detail.startsWith("accepted demo ")) {
+      const message = detail.includes("queue") ? "현재 체험 요청이 많습니다. 잠시 후 다시 시도해 주세요." :
+        detail.includes("budget") ? "오늘 체험 가능한 예산이 모두 예약되었거나 소진되었습니다. 나중에 다시 방문해 주세요." :
+        response.status === 503 ? "체험 준비 중입니다. 잠시 후 다시 시도해 주세요." :
+        "이 기능의 체험이 이미 시작되었거나 허용된 실행 횟수를 사용했습니다. 시작한 체험을 이어서 진행해 주세요.";
+      throw new Error(message);
+    }
+  }
   return response;
 }

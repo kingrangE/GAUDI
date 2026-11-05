@@ -15,6 +15,8 @@ class Execution:
     accepted_at: datetime
     loop: asyncio.AbstractEventLoop
     progress: Callable[[str, int, int], Awaitable[None]]
+    job_id: str = ""
+    lease: str = ""
 
 
 execution: ContextVar[Execution | None] = ContextVar("demo_execution", default=None)

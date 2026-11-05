@@ -29,8 +29,7 @@ class LLMClient(Protocol):
         *,
         temperature: float | None = None,
         max_tokens: int | None = None,
-    ) -> str:
-        ...
+    ) -> str: ...
 
 
 class OpenAIClient:
@@ -67,6 +66,15 @@ class OpenAIClient:
         max_tokens: int | None = None,
     ) -> str:
         limit = self._settings.max_tokens if max_tokens is None else max_tokens
+        from app.core.config import get_settings as app_settings
+        from feature_demo import limits, meter
+
+        protected = limits.enabled()
+        if protected:
+            limit = min(
+                limit or app_settings().demo_max_output_tokens,
+                app_settings().demo_max_output_tokens,
+            )
         extra: dict = {}
         if limit is not None:
             # gpt-5.x renamed the output cap to max_completion_tokens; older models still
@@ -75,15 +83,31 @@ class OpenAIClient:
                 extra["max_completion_tokens"] = limit
             else:
                 extra["max_tokens"] = limit
-        resp = self._ensure_client().chat.completions.create(
-            model=self._settings.model,
-            temperature=self._settings.temperature if temperature is None else temperature,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            **extra,
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+        call = (
+            meter.sync(meter.reserve(self._settings.model, messages, None, limit))
+            if protected
+            else None
         )
+        usage = None
+        try:
+            client = self._ensure_client()
+            if protected:
+                # Demo retries are explicit jobs with their own reservation.
+                client = client.with_options(max_retries=0)
+            resp = client.chat.completions.create(
+                model=self._settings.model,
+                temperature=self._settings.temperature if temperature is None else temperature,
+                messages=messages,
+                **extra,
+            )
+            usage = getattr(resp, "usage", None)
+        finally:
+            if protected:
+                meter.sync(meter.settle(call, usage, limit))
         return resp.choices[0].message.content or ""
 
 

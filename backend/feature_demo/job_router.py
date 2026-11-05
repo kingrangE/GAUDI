@@ -45,7 +45,10 @@ async def recover(
     after: str | None = Query(default=None, pattern=r"^[0-9a-f]{32}$"),
 ) -> dict:
     try:
-        return await recover_jobs(db, after)
+        from feature_demo import limits, slots
+
+        recovered = await slots.recover_slots(db) if limits.enabled() else {}
+        return {**await recover_jobs(db, after), **recovered}
     except (RedisError, OSError) as exc:
         raise HTTPException(status_code=503, detail="job broker unavailable") from exc
 

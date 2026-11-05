@@ -51,6 +51,12 @@ class DockerCodeRunner:
         mem_limit_mb: int = DEFAULT_MEM_LIMIT_MB,
     ) -> ExecResult:
         name = f"gaudi-sandbox-{uuid4().hex}"
+        from feature_demo.slots import sandbox_slot
+
+        with sandbox_slot(name):
+            return self._execute(code, function_name, args, timeout_s, mem_limit_mb, name)
+
+    def _execute(self, code, function_name, args, timeout_s, mem_limit_mb, name):
         command = [
             "docker",
             "run",

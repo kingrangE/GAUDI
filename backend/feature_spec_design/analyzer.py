@@ -67,9 +67,7 @@ def build_judge_prompt(task: SpecTask, sample: Sample) -> str:
         f"- {d.key} (allowed: {', '.join(o.value for o in d.options)}, or unspecified)"
         for d in task.dimensions
     )
-    return (
-        f"# Requirements\n{reqs}\n\n# Dimensions\n{dims}\n\n# Implementation\n{sample.content}"
-    )
+    return f"# Requirements\n{reqs}\n\n# Dimensions\n{dims}\n\n# Implementation\n{sample.content}"
 
 
 def parse_judgement(raw: str, task: SpecTask, index: int) -> SampleJudgement:
@@ -130,7 +128,11 @@ async def judge_all(
         await advance("analyzing_samples", len(samples) + completed, len(samples) * 2 + 1)
         return result
 
-    return list(await asyncio.gather(*(one(s) for s in samples)))
+    results = await asyncio.gather(*(one(s) for s in samples), return_exceptions=True)
+    for result in results:
+        if isinstance(result, BaseException):
+            raise result
+    return list(results)
 
 
 def aggregate_requirements(

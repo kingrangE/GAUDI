@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UsageNotice } from "@/features/demo/UsageNotice";
 
 type Feature = {
   href: string;
@@ -86,6 +87,7 @@ const GROUPS: Group[] = [
 export default function PracticePage() {
   return (
     <div className="py-10">
+      <UsageNotice />
       <section>
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-600">
           개별 연습 · GAUDI

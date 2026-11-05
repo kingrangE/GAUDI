@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 
 from feature_context_engineering.judge import (
     COVERAGE_WEIGHT,
@@ -61,9 +62,16 @@ def build_report(
         # coverage_consensus, this collapses ~4 sequential LLM round-trips into ~1.
         with ThreadPoolExecutor(max_workers=2) as pool:
             coverage_future = pool.submit(
-                coverage_consensus, client, project, submission, runs=coverage_runs
+                copy_context().run,
+                coverage_consensus,
+                client,
+                project,
+                submission,
+                runs=coverage_runs,
             )
-            boundary_future = pool.submit(boundary_dimension, client, project, submission)
+            boundary_future = pool.submit(
+                copy_context().run, boundary_dimension, client, project, submission
+            )
             coverage, results = coverage_future.result()
             if on_progress:
                 on_progress("coverage", 3, 4)
@@ -72,12 +80,18 @@ def build_report(
                 on_progress("boundary", 4, 4)
     else:
         coverage = DimensionScore(
-            key="coverage", label="컨벤션·모호성 커버리지", weight=COVERAGE_WEIGHT,
-            available=False, detail="API 키 없음",
+            key="coverage",
+            label="컨벤션·모호성 커버리지",
+            weight=COVERAGE_WEIGHT,
+            available=False,
+            detail="API 키 없음",
         )
         boundary = DimensionScore(
-            key="boundary", label="경계·풋건 회피", weight=BOUNDARY_WEIGHT,
-            available=False, detail="API 키 없음",
+            key="boundary",
+            label="경계·풋건 회피",
+            weight=BOUNDARY_WEIGHT,
+            available=False,
+            detail="API 키 없음",
         )
 
     dimensions = [coverage, grounding, boundary, efficiency]

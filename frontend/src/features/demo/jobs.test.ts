@@ -148,3 +148,18 @@ it("does not let a late acknowledgement switch back to an earlier visitor", asyn
   expect(tracking.getOwner()).toBe("current-owner");
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
+it.each([[429, "허용된 실행량"], [413, "입력이 너무 큽니다"]])(
+  "explains execution-time policy rejection %s", async (status, message) => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(response({ job_id: id }, 202))
+      .mockResolvedValueOnce(response({ status: "failed", error_status: status })));
+    const { queuedFetch } = await import("./jobs");
+    const result = await queuedFetch(url, init, "owner");
+    expect(result.status).toBe(status);
+    const detail = (await result.json()).detail;
+    expect(detail).toContain(message);
+    if (status === 429) expect(detail).toContain("다른 기능을 둘러보거나 시작한 체험 결과");
+    const { getSnapshot } = await import("./tracking");
+    expect(getSnapshot()[0].error).toBe(detail);
+  },
+);

@@ -57,7 +57,7 @@ export function dismiss(id: string) {
 }
 
 function failure(status?: number) {
-  return status === 429 ? "이 체험의 허용된 실행량을 사용했습니다." : status === 413
+  return status === 429 ? "이 체험의 허용된 실행량을 사용했습니다. 다른 기능을 둘러보거나 시작한 체험 결과를 확인해 주세요." : status === 413
     ? "평가할 입력이 너무 큽니다. 입력을 줄여 주세요."
     : "평가 작업에 실패했습니다. 원래 입력 화면에서 확인해 주세요.";
 }
