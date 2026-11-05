@@ -4,6 +4,7 @@ All LLM provider/model selection lives here (one config module — never scatter
 model IDs across files). Values come from the environment / `.env`.
 """
 
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -70,6 +71,20 @@ class Settings(BaseSettings):
     demo_session_seconds: int = Field(default=7200, gt=0)
     demo_cookie_secure: bool = True
     demo_job_timeout_seconds: int = Field(default=900, gt=0)
+    demo_limits_enabled: bool = True
+    demo_daily_budget_usd: Decimal = Field(default=Decimal("0"), ge=0)
+    # Operator-supplied USD per million input/output tokens; never assume provider prices.
+    demo_model_prices: dict[str, dict[str, Decimal]] = Field(default_factory=dict)
+    demo_max_input_tokens: int = Field(default=65536, gt=0)
+    demo_max_output_tokens: int = Field(default=8192, gt=0)
+    demo_max_pending_jobs: int = Field(default=20, gt=0)
+    demo_max_session_jobs: int = Field(default=2, gt=0)
+    demo_max_evaluations: int = Field(default=1, gt=0)
+    demo_max_sandboxes: int = Field(default=1, gt=0)
+    demo_job_retry_limit: int = Field(default=1, ge=0, le=3)
+    demo_max_sample_runs: int = Field(default=20, gt=0)
+    demo_session_issues_per_hour: int = Field(default=10, gt=0)
+    demo_trusted_proxies: str = ""
 
     # Background grading. "inline" runs grading in-process (default; used by
     # tests and a no-broker setup); "rq" enqueues to an RQ worker via Redis.

@@ -32,15 +32,34 @@ async def complete_structured(
     """
     client = get_client()
     settings = get_settings()
-    completion = await client.beta.chat.completions.parse(
-        model=model or settings.llm_model,
-        temperature=settings.judge_temperature if temperature is None else temperature,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        response_format=schema,
-    )
+    from feature_demo import limits, meter
+
+    selected = model or settings.llm_model
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+    protected = limits.enabled()
+    extra = {}
+    cap = settings.demo_max_output_tokens
+    call = None
+    if protected:
+        call = await meter.reserve(selected, messages, schema.model_json_schema(), cap)
+        client = client.with_options(max_retries=0)
+        extra["max_completion_tokens" if selected.startswith("gpt-5") else "max_tokens"] = cap
+    usage = None
+    try:
+        completion = await client.beta.chat.completions.parse(
+            model=selected,
+            temperature=settings.judge_temperature if temperature is None else temperature,
+            messages=messages,
+            response_format=schema,
+            **extra,
+        )
+        usage = getattr(completion, "usage", None)
+    finally:
+        if protected:
+            await meter.settle(call, usage, cap)
     parsed = completion.choices[0].message.parsed
     if parsed is None:
         raise ValueError("LLM returned no structured output")

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from feature_context_engineering.models import Submission
 from feature_context_engineering.service import create_submission
-from feature_demo.models import DemoJob
+from feature_demo.models import DemoJob, DemoRequest
 from feature_demo.operations import NativeInput, check_owner, operation_for
 
 
@@ -76,6 +76,13 @@ async def accept_job(db: AsyncSession, owner_id: str, key: str, body: CreateJob)
     digest = sha256(serialized.encode()).hexdigest()
     query = select(DemoJob).where(DemoJob.session_id == owner_id, DemoJob.idempotency_key == key)
     existing = await db.scalar(query)
+    from feature_demo import limits
+
+    if existing is None and limits.enabled():
+        budget = await limits.gate(db)
+        receipt = await db.get(DemoRequest, (owner_id, key), populate_existing=True)
+        if receipt:
+            existing = await db.get(DemoJob, receipt.job_id)
     if existing is None:
         try:
             if isinstance(body.input, ContextInput):
@@ -86,6 +93,13 @@ async def accept_job(db: AsyncSession, owner_id: str, key: str, body: CreateJob)
                 )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        attempt = step = logical = None
+        if limits.enabled():
+            replay, attempt, step, logical = await limits.admit(db, owner_id, body, digest, budget)
+            if replay:
+                db.add(DemoRequest(session_id=owner_id, key=key, job_id=replay.id))
+                await db.commit()
+                return replay
         job = DemoJob(
             session_id=owner_id,
             idempotency_key=key,
@@ -98,6 +112,10 @@ async def accept_job(db: AsyncSession, owner_id: str, key: str, body: CreateJob)
         )
         db.add(job)
         try:
+            await db.flush()
+            if limits.enabled():
+                await limits.attach(db, job, attempt, step, logical)
+                db.add(DemoRequest(session_id=owner_id, key=key, job_id=job.id))
             await db.commit()
             return job
         except IntegrityError:

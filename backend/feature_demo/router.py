@@ -29,11 +29,28 @@ async def open_session(
     visitor = await find_session(request, db)
     token = request.cookies.get(COOKIE_NAME)
     if visitor is None:
+        from feature_demo.issuance import check_issuance
+        from feature_demo.limits import enabled
+
+        if enabled():
+            await check_issuance(db, request)
         token = token_urlsafe(32)
         visitor = DemoSession(token_hash=token_hash(token))
         db.add(visitor)
     visitor.expires_at = datetime.now(timezone.utc) + timedelta(
         seconds=settings.demo_session_seconds
+    )
+    from sqlalchemy import update
+
+    from feature_demo.models import DemoAttempt
+
+    await db.execute(
+        update(DemoAttempt)
+        .where(
+            DemoAttempt.session_id == visitor.id,
+            DemoAttempt.closed.is_(False),
+        )
+        .values(expires_at=visitor.expires_at)
     )
     await db.commit()
     response.set_cookie(
@@ -60,3 +77,47 @@ async def read_session(
         raise HTTPException(status_code=401, detail="demo session missing or expired")
     response.headers["Cache-Control"] = "no-store"
     return SessionInfo(session_id=visitor.id, expires_at=visitor.expires_at)
+
+
+@router.get("/usage")
+async def read_usage(
+    request: Request, response: Response, db: AsyncSession = Depends(get_session)
+) -> dict:
+    from sqlalchemy import select
+
+    from feature_demo.limits import enabled
+    from feature_demo.models import DemoAttempt
+    from feature_demo.session import current_demo_session
+
+    visitor = await current_demo_session(request, db)
+    if visitor is None:
+        raise HTTPException(status_code=404, detail="demo mode disabled")
+    attempts = {
+        row.feature: row
+        for row in await db.scalars(select(DemoAttempt).where(DemoAttempt.session_id == visitor.id))
+    }
+    features = [
+        "context_engineering",
+        "spec_design",
+        "dev_prompting",
+        "coding_test",
+        "cs_eval",
+        "office_prompting",
+        "rejection_eval",
+        "test_design",
+        "mock_exam",
+    ]
+    response.headers["Cache-Control"] = "no-store"
+    return {
+        "limited": enabled(),
+        "features": [
+            {
+                "feature": feature,
+                "remaining": 0 if feature in attempts else 1,
+                "state": ("completed" if attempts[feature].closed else "active")
+                if feature in attempts
+                else "available",
+            }
+            for feature in features
+        ],
+    }

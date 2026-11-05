@@ -74,7 +74,12 @@ export async function queuedFetch(url: string, init: RequestInit, owner: string)
     const state = await stateResponse.json() as { status: string; error_status?: number };
     if (state.status === "failed") {
       save(storageKey);
-      return new Response(JSON.stringify({ detail: "평가 작업에 실패했습니다. 입력을 확인해 주세요." }), {
+      const detail = state.error_status === 429
+        ? "이 체험의 허용된 실행량을 사용했습니다. 다른 기능을 둘러보거나 시작한 체험 결과를 확인해 주세요."
+        : state.error_status === 413
+          ? "평가할 입력이 너무 큽니다. 입력을 줄여 주세요."
+          : "평가 작업에 실패했습니다. 입력을 확인해 주세요.";
+      return new Response(JSON.stringify({ detail }), {
         status: state.error_status ?? 503, headers: { "Content-Type": "application/json" },
       });
     }

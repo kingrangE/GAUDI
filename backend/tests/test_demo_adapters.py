@@ -18,10 +18,28 @@ from feature_demo.operations import OPERATIONS
 from feature_demo.worker import run_job
 
 
-@pytest.fixture
-async def demo(client, engine, monkeypatch):
+@pytest.fixture(params=[False, True], ids=["unlimited", "limited"])
+async def demo(client, engine, monkeypatch, request):
     monkeypatch.setattr(get_settings(), "demo_enabled", True)
     monkeypatch.setattr(get_settings(), "demo_cookie_secure", False)
+    from decimal import Decimal
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "demo_limits_enabled", request.param)
+    monkeypatch.setattr(settings, "demo_daily_budget_usd", Decimal("1000"))
+    monkeypatch.setattr(
+        settings,
+        "demo_model_prices",
+        {
+            model: {"input": Decimal("1"), "output": Decimal("2")}
+            for model in {
+                settings.llm_model,
+                settings.solver_model,
+                settings.spec_gen_model,
+                settings.spec_judge_model,
+            }
+        },
+    )
     queue = FakeQueue()
     monkeypatch.setattr(dispatch, "get_demo_queue", lambda: queue)
     await client.post("/api/demo/session")

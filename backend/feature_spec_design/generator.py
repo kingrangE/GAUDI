@@ -61,5 +61,8 @@ async def generate_samples(
         await advance("generating_samples", completed, n * 2 + 1)
         return result
 
-    contents = await asyncio.gather(*(one() for _ in range(n)))
+    contents = await asyncio.gather(*(one() for _ in range(n)), return_exceptions=True)
+    for result in contents:
+        if isinstance(result, BaseException):
+            raise result
     return [Sample(index=i, content=c) for i, c in enumerate(contents)]
