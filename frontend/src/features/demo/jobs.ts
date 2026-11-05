@@ -1,9 +1,14 @@
+import { getOwner, observe, setOwner, withSignal } from "./tracking";
+
 interface PendingJob {
   key: string;
   jobId?: string;
+  path?: string;
 }
 
 const memory = new Map<string, PendingJob>();
+const SETUP_PATHS = new Set(["/test-design/sessions", "/api/office-prompting/sessions",
+  "/api/rejection-eval/sessions", "/dev-prompting/runs"]);
 
 function read(key: string): PendingJob | undefined {
   try {
@@ -11,7 +16,10 @@ function read(key: string): PendingJob | undefined {
     if (raw) {
       const value = JSON.parse(raw) as PendingJob;
       if (typeof value.key === "string" &&
-          (value.jobId === undefined || /^[a-f0-9]{32}$/.test(value.jobId))) return value;
+          (value.jobId === undefined || /^[a-f0-9]{32}$/.test(value.jobId))) {
+        return { key: value.key, jobId: value.jobId,
+          path: typeof value.path === "string" && value.path.startsWith("/") ? value.path : undefined };
+      }
     }
   } catch { /* Memory keeps retries safe when persistent storage is unavailable. */ }
   return memory.get(key);
@@ -26,21 +34,6 @@ function save(key: string, value?: PendingJob): void {
   } catch { /* The current document can continue through the memory fallback. */ }
 }
 
-async function pause(signal?: AbortSignal | null): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const stop = () => {
-      clearTimeout(timer);
-      reject(new DOMException("Request aborted", "AbortError"));
-    };
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", stop);
-      resolve();
-    }, 1000);
-    if (signal?.aborted) stop();
-    else signal?.addEventListener("abort", stop, { once: true });
-  });
-}
-
 /** Preserve the native response contract while the server executes a durable job. */
 export async function queuedFetch(url: string, init: RequestInit, owner: string): Promise<Response> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(
@@ -48,10 +41,12 @@ export async function queuedFetch(url: string, init: RequestInit, owner: string)
   ));
   const fingerprint = Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("");
   const storageKey = `gaudi:pending-job:${owner}:${fingerprint}`;
-  const pending = read(storageKey) ?? { key: crypto.randomUUID() };
+  const path = new URL(url, window.location.origin).pathname;
+  const setup = SETUP_PATHS.has(path);
+  const resourceKey = `gaudi:resource-job:${owner}:${fingerprint}`;
+  const pending = read(storageKey) ?? (setup ? read(resourceKey) : undefined) ?? { key: crypto.randomUUID() };
   save(storageKey, pending);
-  const base = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
-  const request = { credentials: "include" as const, signal: init.signal, cache: "no-store" as const };
+  setOwner(owner);
 
   if (!pending.jobId) {
     const headers = new Headers(init.headers);
@@ -65,36 +60,44 @@ export async function queuedFetch(url: string, init: RequestInit, owner: string)
     const accepted = await response.json() as { job_id: string };
     if (!/^[a-f0-9]{32}$/.test(accepted.job_id)) throw new Error("평가 작업 ID가 올바르지 않습니다.");
     pending.jobId = accepted.job_id;
+    pending.path = path;
     save(storageKey, pending);
   }
 
-  while (true) {
-    const stateResponse = await fetch(`${base}/api/demo/jobs/${pending.jobId}`, request);
-    if (!stateResponse.ok) return stateResponse;
-    const state = await stateResponse.json() as { status: string; error_status?: number };
-    if (state.status === "failed") {
+  if (getOwner() !== owner) return new Response(null, { status: 401 });
+  const work = observe(pending.jobId, owner, pending.path).then((response) => {
+    if (response.ok || response.headers.get("X-Demo-Job-Terminal") === "failed") {
+      if (setup) save(resourceKey, response.ok ? pending : undefined);
       save(storageKey);
-      const detail = state.error_status === 429
-        ? "이 체험의 허용된 실행량을 사용했습니다. 다른 기능을 둘러보거나 시작한 체험 결과를 확인해 주세요."
-        : state.error_status === 413
-          ? "평가할 입력이 너무 큽니다. 입력을 줄여 주세요."
-          : "평가 작업에 실패했습니다. 입력을 확인해 주세요.";
-      return new Response(JSON.stringify({ detail }), {
-        status: state.error_status ?? 503, headers: { "Content-Type": "application/json" },
-      });
     }
-    if (state.status === "completed") {
-      const resultResponse = await fetch(`${base}/api/demo/jobs/${pending.jobId}/result`, request);
-      if (!resultResponse.ok) return resultResponse;
-      const result = await resultResponse.json() as { http_status: number; body: unknown };
-      if (!Number.isInteger(result.http_status) || result.http_status < 200 || result.http_status > 299) {
-        throw new Error("평가 결과 응답이 올바르지 않습니다.");
-      }
+    if (response.status === 401 || response.status === 404) {
+      save(resourceKey);
       save(storageKey);
-      return new Response(JSON.stringify(result.body), {
-        status: result.http_status, headers: { "Content-Type": "application/json" },
-      });
     }
-    await pause(init.signal);
-  }
+    return response;
+  });
+  return withSignal(work, init.signal);
+}
+
+export async function recoverPending(owner: string): Promise<void> {
+  setOwner(owner);
+  const keys = new Set(memory.keys());
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) keys.add(key);
+    }
+  } catch { /* Reconnect in-memory jobs when storage is unavailable. */ }
+  await Promise.allSettled(Array.from(keys).filter((key) =>
+    key.startsWith(`gaudi:pending-job:${owner}:`),
+  ).map(async (key) => {
+    const pending = read(key);
+    if (!pending?.jobId) return;
+    const response = await observe(pending.jobId, owner, pending.path);
+    if (response.ok && pending.path && SETUP_PATHS.has(pending.path)) {
+      save(key.replace("gaudi:pending-job:", "gaudi:resource-job:"), pending);
+    }
+    if (response.ok || response.status === 401 || response.status === 404 ||
+        response.headers.get("X-Demo-Job-Terminal") === "failed") save(key);
+  }));
 }
